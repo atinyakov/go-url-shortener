@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
+	"github.com/go-chi/chi/v5"
 )
 
 type URLHandler struct {
@@ -46,11 +47,9 @@ func (h *URLHandler) HandlePost(res http.ResponseWriter, req *http.Request) {
 
 // HandleGet handles GET requests for URL resolution
 func (h *URLHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
-	shortURL := strings.TrimPrefix(req.URL.Path, "/")
-	if shortURL == "" {
-		http.Error(res, "Short URL is required", http.StatusBadRequest)
-		return
-	}
+	shortURL := chi.URLParam(req, "url")
+
+	fmt.Println("sorturl", shortURL)
 
 	longURL := h.Resolver.ShortToLong(shortURL)
 	if longURL == "" {
@@ -58,8 +57,7 @@ func (h *URLHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	res.Header().Set("Location", longURL)
 
-	res.Header().Add("Location", longURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
