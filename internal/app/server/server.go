@@ -8,16 +8,15 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Init(resolver *services.URLResolver) *chi.Mux {
+func Init(resolver *services.URLResolver, baseUrl string) *chi.Mux {
 
-	handler := handlers.NewURLHandler(resolver)
+	handler := handlers.NewURLHandler(resolver, baseUrl)
 
 	r := chi.NewRouter()
 
 	r.Post("/", handler.HandlePost)
 	r.Get("/{url}", handler.HandleGet)
 
-	// Explicitly handle GET / to return 400
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Short URL is required", http.StatusBadRequest)
 	})
