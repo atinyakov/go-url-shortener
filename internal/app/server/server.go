@@ -8,9 +8,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Init(resolver *services.URLResolver, baseUrl string) *chi.Mux {
+func Init(resolver *services.URLResolver, baseURL string) *chi.Mux {
 
-	handler := handlers.NewURLHandler(resolver, baseUrl)
+	handler := handlers.NewURLHandler(resolver, baseURL)
 
 	r := chi.NewRouter()
 

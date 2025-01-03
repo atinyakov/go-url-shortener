@@ -11,13 +11,13 @@ import (
 
 type URLHandler struct {
 	Resolver *services.URLResolver
-	baseUrl  string
+	baseURL  string
 }
 
-func NewURLHandler(resolver *services.URLResolver, baseUrl string) *URLHandler {
+func NewURLHandler(resolver *services.URLResolver, baseURL string) *URLHandler {
 	return &URLHandler{
 		Resolver: resolver,
-		baseUrl:  baseUrl,
+		baseURL:  baseURL,
 	}
 }
 
@@ -41,7 +41,7 @@ func (h *URLHandler) HandlePost(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusCreated)
 
-	_, writeErr := res.Write([]byte(h.baseUrl + "/" + shortURL))
+	_, writeErr := res.Write([]byte(h.baseURL + "/" + shortURL))
 	if writeErr != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
