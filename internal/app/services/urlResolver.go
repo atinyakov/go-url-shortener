@@ -3,6 +3,7 @@ package services
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 )
 
 type URLResolver struct {
@@ -60,6 +61,14 @@ func (u *URLResolver) LongToShort(url string) string {
 	}
 
 	short := u.hashToShort(url)
+
+	collisionCount := 0
+	for _, exists := u.stol[short]; exists; {
+		collisionCount++
+		modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
+		short = u.hashToShort(modifiedInput)
+	}
+
 	u.ltos[url] = short
 	u.stol[short] = url
 	return short

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/http"
 
@@ -13,7 +12,6 @@ import (
 func main() {
 
 	options := config.Init()
-	flag.Parse()
 
 	hostname := options.A
 	resultHostname := options.B
