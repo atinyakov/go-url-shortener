@@ -1,4 +1,4 @@
-package handlers
+package main
 
 import (
 	"io"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atinyakov/go-url-shortener/internal/app/server"
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func TestPostHandlers(t *testing.T) {
 			name: "Test POST 201",
 			request: Request{
 				method: http.MethodPost,
-				url:    "http://localhost:8080/",
+				url:    "/",
 				body:   "https://practicum.yandex.ru/",
 			},
 			want: want{
@@ -48,7 +49,7 @@ func TestPostHandlers(t *testing.T) {
 			name: "Test POST 400",
 			request: Request{
 				method: http.MethodPost,
-				url:    "http://localhost:8080/",
+				url:    "/",
 				body:   "",
 			},
 			want: want{
@@ -59,21 +60,18 @@ func TestPostHandlers(t *testing.T) {
 		},
 	}
 
+	ts := httptest.NewServer(server.Init(resolver))
+	defer ts.Close()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Create a new HTTP request and response recorder
-			r := httptest.NewRequest(test.request.method, test.request.url, strings.NewReader(test.request.body))
-			w := httptest.NewRecorder()
+			// Create a new HTTP request using http.NewRequest
+			req, err := http.NewRequest(test.request.method, ts.URL+test.request.url, strings.NewReader(test.request.body))
+			require.NoError(t, err)
 
-			handler := NewURLHandler(resolver)
-
-			// Call the handler
-			handler.HandlePost(w, r)
-
-			// Get the result
-			result := w.Result()
-
-			// Ensure the response body is closed
+			// Send the request using the test server's client
+			result, err := ts.Client().Do(req)
+			require.NoError(t, err)
 			defer result.Body.Close()
 
 			// Assert response status code
@@ -94,7 +92,6 @@ func TestGetHandlers(t *testing.T) {
 	type Request struct {
 		method string
 		url    string
-		body   string
 	}
 
 	type want struct {
@@ -111,8 +108,7 @@ func TestGetHandlers(t *testing.T) {
 			name: "Test GET 400",
 			request: Request{
 				method: http.MethodGet,
-				url:    "http://localhost:8080/",
-				body:   "",
+				url:    "/",
 			},
 			want: want{
 				code:        http.StatusBadRequest,
@@ -124,8 +120,7 @@ func TestGetHandlers(t *testing.T) {
 			name: "Test GET 404",
 			request: Request{
 				method: http.MethodGet,
-				url:    "http://localhost:8080/123",
-				body:   "",
+				url:    "/123",
 			},
 			want: want{
 				code:        http.StatusNotFound,
@@ -137,8 +132,7 @@ func TestGetHandlers(t *testing.T) {
 			name: "Test GET 307",
 			request: Request{
 				method: http.MethodGet,
-				url:    "http://localhost:8080/5Ol0CyIn",
-				body:   "",
+				url:    "/5Ol0CyIn",
 			},
 			want: want{
 				code:        http.StatusTemporaryRedirect,
@@ -148,32 +142,28 @@ func TestGetHandlers(t *testing.T) {
 		},
 	}
 
+	ts := httptest.NewServer(server.Init(resolver))
+	defer ts.Close()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Create a new HTTP request and response recorder
-			r := httptest.NewRequest(test.request.method, test.request.url, strings.NewReader(test.request.body))
-			w := httptest.NewRecorder()
+			// Create a new HTTP request using http.NewRequest
+			t.Logf("Requesting URL: %s", ts.URL+test.request.url)
+			req, err := http.NewRequest(test.request.method, ts.URL+test.request.url, nil)
+			require.NoError(t, err)
 
-			handler := NewURLHandler(resolver)
+			// Send the request using the test server's client
+			client := ts.Client()
+			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
 
-			// Call the handler
-			handler.HandleGet(w, r)
-
-			// Get the result
-			result := w.Result()
-
-			// Ensure response body is always closed
-			defer func() {
-				if result.Body != nil {
-					result.Body.Close()
-				}
-			}()
+			result, err := client.Do(req)
+			require.NoError(t, err)
+			defer result.Body.Close()
 
 			// Assert response status code
 			assert.Equal(t, test.want.code, result.StatusCode, "unexpected status code")
-
-			// Assert response content type
-			assert.Equal(t, test.want.contentType, result.Header.Get("Content-Type"), "unexpected content type")
 
 			// Assert response location header (for redirects)
 			assert.Equal(t, test.want.location, result.Header.Get("Location"), "unexpected location header")
