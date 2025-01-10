@@ -60,7 +60,7 @@ func TestPostHandlers(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(server.Init(resolver))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080"))
 	defer ts.Close()
 
 	for _, test := range tests {
@@ -142,7 +142,7 @@ func TestGetHandlers(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(server.Init(resolver))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080"))
 	defer ts.Close()
 
 	for _, test := range tests {
