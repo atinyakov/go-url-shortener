@@ -4,7 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"sync"
 )
+
+var mu sync.Mutex
 
 type URLResolver struct {
 	numCharsShortLink int
@@ -62,6 +65,7 @@ func (u *URLResolver) LongToShort(url string) string {
 
 	short := u.hashToShort(url)
 
+	mu.Lock()
 	collisionCount := 0
 	for _, exists := u.stol[short]; exists; {
 		collisionCount++
@@ -71,6 +75,7 @@ func (u *URLResolver) LongToShort(url string) string {
 
 	u.ltos[url] = short
 	u.stol[short] = url
+	mu.Unlock()
 	return short
 }
 
