@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
+	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -21,8 +25,8 @@ func NewURLHandler(resolver *services.URLResolver, baseURL string) *URLHandler {
 	}
 }
 
-// HandlePost handles POST requests for URL shortening
-func (h *URLHandler) HandlePost(res http.ResponseWriter, req *http.Request) {
+// HandlePostPlainBody handles POST requests for URL shortening
+func (h *URLHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	defer req.Body.Close()
 
@@ -45,6 +49,37 @@ func (h *URLHandler) HandlePost(res http.ResponseWriter, req *http.Request) {
 	if writeErr != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
+}
+
+// HandlePostJSON handles POST requests for URL shortening
+func (h *URLHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) {
+
+	var request models.Request
+
+	err := decodeJSONBody(res, req, &request)
+	if err != nil {
+		var mr *malformedRequest
+		if errors.As(err, &mr) {
+			http.Error(res, mr.msg, mr.status)
+		} else {
+			log.Print(err.Error())
+			http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	fmt.Println("got URL", request.URL)
+	shortURL := h.Resolver.LongToShort(request.URL)
+	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+
+	_, writeErr := res.Write(response)
+	if writeErr != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+
 }
 
 // HandleGet handles GET requests for URL resolution

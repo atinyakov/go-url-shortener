@@ -17,7 +17,8 @@ func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI)
 	r := chi.NewRouter()
 	r.Use(middleware.WithLogging(logger))
 
-	r.Post("/", handler.HandlePost)
+	r.Post("/", handler.HandlePostPlainBody)
+	r.Post("/api/shorten", handler.HandlePostJSON)
 	r.Get("/{url}", handler.HandleGet)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
