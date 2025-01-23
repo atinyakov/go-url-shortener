@@ -57,6 +57,8 @@ func WithLogging(log logger.LoggerI) func(http.Handler) http.Handler {
 			log.Info("HTTP Request",
 				"method", r.Method,
 				"url", r.URL.String(),
+				"encoding", r.Header.Get("Accept-Encoding"),
+				"contentType", r.Header.Get("Content-Type"),
 				"duration", time.Since(start),
 				"status", responseData.status, // получаем перехваченный код статуса ответа
 				"duration", duration,

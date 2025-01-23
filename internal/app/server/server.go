@@ -16,6 +16,7 @@ func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI)
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithLogging(logger))
+	r.Use(middleware.WithGZIP)
 
 	r.Post("/", handler.HandlePostPlainBody)
 	r.Post("/api/shorten", handler.HandlePostJSON)
