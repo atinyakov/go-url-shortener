@@ -86,7 +86,7 @@ func TestPostHandlers(t *testing.T) {
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false))
 	defer ts.Close()
 
 	for _, test := range tests {
@@ -180,7 +180,7 @@ func TestGetHandlers(t *testing.T) {
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false))
 	defer ts.Close()
 
 	for _, test := range tests {

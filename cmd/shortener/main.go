@@ -24,7 +24,7 @@ func main() {
 	}
 
 	resolver := services.NewURLResolver(8)
-	r := server.Init(resolver, resultHostname, log)
+	r := server.Init(resolver, resultHostname, log, true)
 
 	fmt.Println("Server is running on:", hostname)
 	err := http.ListenAndServe(hostname, r)
