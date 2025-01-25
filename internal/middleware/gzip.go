@@ -16,49 +16,10 @@ func (w GzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-// func (w GzipResponseWriter) WriteHeader(statusCode int) {
-// 	if statusCode >= 200 && statusCode < 300 {
-// 		w.Header().Del("Content-Length")
-// 		w.Header().Set("Content-Encoding", "gzip")
-// 	} else {
-// 		w.Header().Del("Content-Encoding") // Ensure no gzip for redirects or errors
-// 	}
-// 	w.WriteHeader(statusCode)
-// }
-
-// type compressReader struct {
-// 	r  io.ReadCloser
-// 	zr *gzip.Reader
-// }
-
-// func newCompressReader(r io.ReadCloser) (*compressReader, error) {
-// 	zr, err := gzip.NewReader(r)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &compressReader{
-// 		r:  r,
-// 		zr: zr,
-// 	}, nil
-// }
-
-// func (c compressReader) Read(p []byte) (n int, err error) {
-// 	return c.zr.Read(p)
-// }
-
-// func (c *compressReader) Close() error {
-// 	if err := c.r.Close(); err != nil {
-// 		return err
-// 	}
-// 	return c.zr.Close()
-// }
-
 func WithGZIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		acceptsEncoding := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
-		contentType := r.Header.Get("Content-Type")
-		isPlainText := strings.Contains(contentType, "text/plain")
+		isPlainText := strings.Contains(r.Header.Get("Content-Type"), "text/plain")
 		sendsEncoded := strings.Contains(r.Header.Get("Content-Encoding"), "gzip")
 
 		// Check if the client accepts gzip and decide based on Content-Type
@@ -84,7 +45,6 @@ func WithGZIP(next http.Handler) http.Handler {
 			defer gz.Close()
 
 			gzw := GzipResponseWriter{Writer: gz, ResponseWriter: w}
-			// defer gzw.zw.Close()
 
 			next.ServeHTTP(gzw, r)
 			return

@@ -46,23 +46,21 @@ func WithLogging(log logger.LoggerI) func(http.Handler) http.Handler {
 				size:   0,
 			}
 			lw := loggingResponseWriter{
-				ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
+				ResponseWriter: w,
 				responseData:   responseData,
 			}
 
-			next.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
+			next.ServeHTTP(&lw, r)
 
 			duration := time.Since(start)
 
 			log.Info("HTTP Request",
 				"method", r.Method,
 				"url", r.URL.String(),
-				"encoding", r.Header.Get("Accept-Encoding"),
-				"contentType", r.Header.Get("Content-Type"),
 				"duration", time.Since(start),
-				"status", responseData.status, // получаем перехваченный код статуса ответа
+				"status", responseData.status,
 				"duration", duration,
-				"size", responseData.size, // получаем перехваченный размер ответа
+				"size", responseData.size,
 			)
 
 		})
