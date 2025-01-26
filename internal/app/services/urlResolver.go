@@ -16,12 +16,12 @@ type URLResolver struct {
 	stol              map[string]string
 }
 
-func NewURLResolver(numChars int) *URLResolver {
+func NewURLResolver(numChars int, ltos map[string]string, stol map[string]string) *URLResolver {
 	return &URLResolver{
 		numCharsShortLink: numChars,
 		elements:          "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		ltos:              make(map[string]string),
-		stol:              make(map[string]string),
+		ltos:              ltos,
+		stol:              stol,
 	}
 }
 
@@ -58,25 +58,27 @@ func (u *URLResolver) base16ToBase62(hexString string) string {
 	return string(sb)
 }
 
-func (u *URLResolver) LongToShort(url string) string {
+func (u *URLResolver) LongToShort(url string) (string, bool) {
 	if short, exists := u.ltos[url]; exists {
-		return short
+		return short, exists
 	}
 
 	short := u.hashToShort(url)
 
 	mu.Lock()
 	collisionCount := 0
-	for _, exists := u.stol[short]; exists; {
+	_, exists := u.stol[short]
+	if exists {
 		collisionCount++
 		modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
 		short = u.hashToShort(modifiedInput)
+		exists = false
 	}
 
 	u.ltos[url] = short
 	u.stol[short] = url
 	mu.Unlock()
-	return short
+	return short, exists
 }
 
 func (u *URLResolver) ShortToLong(short string) string {

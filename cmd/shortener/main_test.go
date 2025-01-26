@@ -16,8 +16,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var resolver = services.NewURLResolver(8)
+var resolver = services.NewURLResolver(8, make(map[string]string), make(map[string]string))
 var log = logger.New()
+
+type TestStorage struct {
+}
+
+func (t TestStorage) Write(interface{}) error {
+	return nil
+}
+
+func (t TestStorage) Read() ([]map[string]string, error) {
+	var records []map[string]string
+	return records, nil
+}
+
+var mockStorage = &TestStorage{}
 
 func TestPostHandlers(t *testing.T) {
 
@@ -86,7 +100,7 @@ func TestPostHandlers(t *testing.T) {
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage))
 	defer ts.Close()
 
 	for _, test := range tests {
@@ -180,7 +194,7 @@ func TestGetHandlers(t *testing.T) {
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage))
 	defer ts.Close()
 
 	for _, test := range tests {

@@ -42,5 +42,11 @@ func (l *Logger) Init(level string) error {
 func (l *Logger) Info(msg string, keysAndValues ...interface{}) {
 	sugar := l.Log.Sugar()
 
-	sugar.Infow(msg, keysAndValues...)
+	sugar.WithOptions(zap.AddCallerSkip(1)).Infow(msg, keysAndValues...)
+}
+
+func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
+	sugar := l.Log.Sugar()
+
+	sugar.WithOptions(zap.AddCallerSkip(1)).Errorw(msg, keysAndValues...)
 }
