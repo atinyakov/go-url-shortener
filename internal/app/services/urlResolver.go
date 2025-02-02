@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 var mu sync.Mutex
@@ -16,13 +18,33 @@ type URLResolver struct {
 	stol              map[string]string
 }
 
-func NewURLResolver(numChars int, ltos map[string]string, stol map[string]string) *URLResolver {
+type StorageI interface {
+	Read() ([]storage.URLRecord, error)
+}
+
+func NewURLResolver(numChars int, storage StorageI) (*URLResolver, error) {
+	records, err := storage.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var ltos, stol map[string]string
+	ltos = make(map[string]string)
+	stol = make(map[string]string)
+
+	for _, record := range records {
+		original := record.Original
+		short := record.Short
+		ltos[original] = short
+		stol[short] = original
+	}
+
 	return &URLResolver{
 		numCharsShortLink: numChars,
 		elements:          "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
 		ltos:              ltos,
 		stol:              stol,
-	}
+	}, nil
 }
 
 func (u *URLResolver) hashToShort(url string) string {

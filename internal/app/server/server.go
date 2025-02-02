@@ -12,7 +12,12 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs storage.StorageI) *chi.Mux {
+type StorageI interface {
+	Write(value storage.URLRecord) error
+	Read() ([]storage.URLRecord, error)
+}
+
+func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs StorageI) *chi.Mux {
 
 	handler := handlers.NewURLHandler(resolver, baseURL, fs, logger)
 
@@ -21,7 +26,8 @@ func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI,
 	r.Use(middleware.WithRequestLogging(logger))
 
 	if withGzip {
-		r.Use(middleware.WithGZIP)
+		r.Use(middleware.WithGZIPPost)
+		r.Use(middleware.WithGZIPGet)
 	}
 
 	r.Post("/", handler.HandlePostPlainBody)

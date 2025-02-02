@@ -12,26 +12,28 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var resolver = services.NewURLResolver(8, make(map[string]string), make(map[string]string))
 var log = logger.New()
 
 type TestStorage struct {
 }
 
-func (t TestStorage) Write(interface{}) error {
+func (t TestStorage) Write(value storage.URLRecord) error {
 	return nil
 }
 
-func (t TestStorage) Read() ([]map[string]string, error) {
-	var records []map[string]string
+func (t TestStorage) Read() ([]storage.URLRecord, error) {
+	var records []storage.URLRecord
 	return records, nil
 }
 
 var mockStorage = &TestStorage{}
+
+var resolver, _ = services.NewURLResolver(8, mockStorage)
 
 func TestPostHandlers(t *testing.T) {
 

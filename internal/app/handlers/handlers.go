@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
@@ -17,16 +16,19 @@ import (
 	"github.com/google/uuid"
 )
 
-var mu sync.Mutex
+type StorageI interface {
+	Write(value storage.URLRecord) error
+	Read() ([]storage.URLRecord, error)
+}
 
 type URLHandler struct {
 	Resolver *services.URLResolver
 	baseURL  string
-	storage  storage.StorageI
+	storage  StorageI
 	logger   logger.LoggerI
 }
 
-func NewURLHandler(resolver *services.URLResolver, baseURL string, s storage.StorageI, l logger.LoggerI) *URLHandler {
+func NewURLHandler(resolver *services.URLResolver, baseURL string, s StorageI, l logger.LoggerI) *URLHandler {
 	return &URLHandler{
 		Resolver: resolver,
 		baseURL:  baseURL,
@@ -53,16 +55,14 @@ func (h *URLHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Requ
 	}
 
 	shortURL, exists := h.Resolver.LongToShort(originalURL)
-	URLrecord := models.URL{Short: shortURL, Original: originalURL, ID: uuid.New().String()}
+	URLrecord := storage.URLRecord{Short: shortURL, Original: originalURL, ID: uuid.New().String()}
 
 	if !exists {
-		mu.Lock()
 
 		if storageErr := h.storage.Write(URLrecord); storageErr != nil {
 			res.WriteHeader(http.StatusInternalServerError)
 		}
 
-		mu.Unlock()
 	}
 
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -92,8 +92,17 @@ func (h *URLHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) 
 	}
 
 	fmt.Println("got URL", request.URL)
-	shortURL, _ := h.Resolver.LongToShort(request.URL)
+	shortURL, exists := h.Resolver.LongToShort(request.URL)
 	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
+
+	if !exists {
+		URLrecord := storage.URLRecord{Short: shortURL, Original: request.URL, ID: uuid.New().String()}
+
+		if storageErr := h.storage.Write(URLrecord); storageErr != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+
+	}
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)

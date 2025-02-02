@@ -6,30 +6,30 @@ import (
 )
 
 type Options struct {
-	A string
-	B string
-	F string
+	Port           string
+	ResultHostname string
+	FilaPath       string
 }
 
 func Init() *Options {
 	options := &Options{}
 
-	flag.StringVar(&options.A, "a", "localhost:8080", "run on ip:port server")
-	flag.StringVar(&options.B, "b", "http://localhost:8080", "result base url")
-	flag.StringVar(&options.F, "f", "./urls", "path to storage file")
+	flag.StringVar(&options.Port, "a", "localhost:8080", "run on ip:port server")
+	flag.StringVar(&options.ResultHostname, "b", "http://localhost:8080", "result base url")
+	flag.StringVar(&options.FilaPath, "f", "./urls", "path to storage file")
 
 	flag.Parse()
 
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
-		options.A = serverAddress
+		options.Port = serverAddress
 	}
 
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
-		options.B = baseURL
+		options.ResultHostname = baseURL
 	}
 
 	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
-		options.F = storagePath
+		options.FilaPath = storagePath
 	}
 
 	return options

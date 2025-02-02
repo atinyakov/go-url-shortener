@@ -16,23 +16,10 @@ func (w GzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func WithGZIP(next http.Handler) http.Handler {
+func WithGZIPGet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		acceptsEncoding := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 		isPlainText := strings.Contains(r.Header.Get("Content-Type"), "text/plain")
-		sendsEncoded := strings.Contains(r.Header.Get("Content-Encoding"), "gzip")
-
-		// Check if the client accepts gzip and decide based on Content-Type
-		// Handle gzip request body if present
-		if sendsEncoded {
-			reader, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
-				return
-			}
-			defer reader.Close()
-			r.Body = io.NopCloser(reader)
-		}
 
 		if acceptsEncoding && !isPlainText {
 			w.Header().Set("Content-Encoding", "gzip")
@@ -48,6 +35,26 @@ func WithGZIP(next http.Handler) http.Handler {
 
 			next.ServeHTTP(gzw, r)
 			return
+		}
+
+		// Pass through without compression for unsupported cases
+		next.ServeHTTP(w, r)
+	})
+}
+func WithGZIPPost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sendsEncoded := strings.Contains(r.Header.Get("Content-Encoding"), "gzip")
+
+		// Check if the client accepts gzip and decide based on Content-Type
+		// Handle gzip request body if present
+		if sendsEncoded {
+			reader, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
+				return
+			}
+			defer reader.Close()
+			r.Body = io.NopCloser(reader)
 		}
 
 		// Pass through without compression for unsupported cases
