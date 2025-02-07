@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/handlers"
@@ -12,10 +13,10 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs storage.StorageI) *chi.Mux {
+func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs storage.StorageI, db *sql.DB) *chi.Mux {
 
-	getHandler := handlers.NewGetHandler(resolver, fs, logger)
-	postHandler := handlers.NewPostHandler(resolver, baseURL, fs, logger)
+	getHandler := handlers.NewGetHandler(resolver, fs, logger, db)
+	postHandler := handlers.NewPostHandler(resolver, baseURL, fs, logger, db)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))

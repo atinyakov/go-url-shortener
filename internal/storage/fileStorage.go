@@ -15,7 +15,7 @@ type FileStorage struct {
 	mu   sync.RWMutex
 }
 
-func NewFileStorate(p string) (*FileStorage, error) {
+func NewFileStorage(p string) (*FileStorage, error) {
 	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
 		return nil, err
 	}

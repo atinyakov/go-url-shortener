@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -18,13 +19,15 @@ type PostHandler struct {
 	Resolver *services.URLResolver
 	baseURL  string
 	storage  storage.StorageI
+	db       *sql.DB
 	logger   logger.LoggerI
 }
 
-func NewPostHandler(resolver *services.URLResolver, baseURL string, s storage.StorageI, l logger.LoggerI) *PostHandler {
+func NewPostHandler(resolver *services.URLResolver, baseURL string, s storage.StorageI, l logger.LoggerI, db *sql.DB) *PostHandler {
 	return &PostHandler{
 		Resolver: resolver,
 		baseURL:  baseURL,
+		db:       db,
 		storage:  s,
 		logger:   l,
 	}

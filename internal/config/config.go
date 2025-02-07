@@ -8,7 +8,8 @@ import (
 type Options struct {
 	Port           string
 	ResultHostname string
-	FilaPath       string
+	FilePath       string
+	DatabaseDSN    string
 }
 
 func Init() *Options {
@@ -16,7 +17,8 @@ func Init() *Options {
 
 	flag.StringVar(&options.Port, "a", "localhost:8080", "run on ip:port server")
 	flag.StringVar(&options.ResultHostname, "b", "http://localhost:8080", "result base url")
-	flag.StringVar(&options.FilaPath, "f", "./urls", "path to storage file")
+	flag.StringVar(&options.FilePath, "f", "./urls", "path to storage file")
+	flag.StringVar(&options.DatabaseDSN, "d", "localhost", "db address")
 
 	flag.Parse()
 
@@ -29,7 +31,7 @@ func Init() *Options {
 	}
 
 	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
-		options.FilaPath = storagePath
+		options.FilePath = storagePath
 	}
 
 	return options
