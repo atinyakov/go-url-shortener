@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,22 +11,19 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
-	"github.com/google/uuid"
 )
 
 type PostHandler struct {
 	Resolver *services.URLResolver
 	baseURL  string
 	storage  storage.StorageI
-	db       *sql.DB
 	logger   logger.LoggerI
 }
 
-func NewPostHandler(resolver *services.URLResolver, baseURL string, s storage.StorageI, l logger.LoggerI, db *sql.DB) *PostHandler {
+func NewPostHandler(resolver *services.URLResolver, baseURL string, s storage.StorageI, l logger.LoggerI) *PostHandler {
 	return &PostHandler{
 		Resolver: resolver,
 		baseURL:  baseURL,
-		db:       db,
 		storage:  s,
 		logger:   l,
 	}
@@ -50,14 +46,10 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	shortURL, exists := h.Resolver.LongToShort(originalURL)
-	URLrecord := storage.URLRecord{Short: shortURL, Original: originalURL, ID: uuid.New().String()}
+	shortURL, storageErr := h.Resolver.LongToShort(originalURL)
 
-	if !exists {
-		if storageErr := h.storage.Write(URLrecord); storageErr != nil {
-			res.WriteHeader(http.StatusInternalServerError)
-		}
-
+	if storageErr != nil {
+		res.WriteHeader(http.StatusInternalServerError)
 	}
 
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -88,17 +80,12 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 
 	h.logger.Info("Got Url: %s", request.URL)
 
-	shortURL, exists := h.Resolver.LongToShort(request.URL)
-	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
-
-	if !exists {
-		URLrecord := storage.URLRecord{Short: shortURL, Original: request.URL, ID: uuid.New().String()}
-
-		if storageErr := h.storage.Write(URLrecord); storageErr != nil {
-			res.WriteHeader(http.StatusInternalServerError)
-		}
-
+	shortURL, err := h.Resolver.LongToShort(request.URL)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
 	}
+
+	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)

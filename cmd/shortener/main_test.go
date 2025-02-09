@@ -19,19 +19,19 @@ import (
 
 var log = logger.New()
 
-type TestStorage struct {
-}
+// type TestStorage struct {
+// }
 
-func (t TestStorage) Write(value storage.URLRecord) error {
-	return nil
-}
+// func (t TestStorage) Write(value storage.URLRecord) error {
+// 	return nil
+// }
 
-func (t TestStorage) Read() ([]storage.URLRecord, error) {
-	var records []storage.URLRecord
-	return records, nil
-}
+// func (t TestStorage) Read() ([]storage.URLRecord, error) {
+// 	var records []storage.URLRecord
+// 	return records, nil
+// }
 
-var mockStorage = &TestStorage{}
+var mockStorage, _ = storage.CreateMemoryStorage()
 
 var resolver, _ = services.NewURLResolver(8, mockStorage)
 
@@ -102,7 +102,7 @@ func TestPostHandlers(t *testing.T) {
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage, nil))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage))
 	defer ts.Close()
 
 	for _, test := range tests {
@@ -196,7 +196,7 @@ func TestGetHandlers(t *testing.T) {
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage, nil))
+	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage))
 	defer ts.Close()
 
 	for _, test := range tests {

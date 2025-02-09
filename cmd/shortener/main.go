@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+
 	"net/http"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
@@ -21,25 +23,45 @@ func main() {
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
 
-	db := repository.InitDB(dbName)
-	defer db.Close()
+	var s storage.StorageI
 
 	log := logger.New()
-	logErr := log.Init("Info")
-	if logErr != nil {
-		panic(logErr)
-	}
-
-	fs, fsError := storage.NewFileStorage(filePath)
-	if fsError != nil {
-		panic(fsError)
-	}
-
-	resolver, err := services.NewURLResolver(8, fs)
+	err := log.Init("Info")
 	if err != nil {
 		panic(err)
 	}
-	r := server.Init(resolver, resultHostname, log, true, fs, db)
+
+	if dbName != "" {
+		db := repository.InitDB(dbName)
+		defer db.Close()
+		fmt.Println("using db")
+		s = repository.CreateURLRepository(db)
+	} else if filePath != "" {
+		fmt.Println("using file")
+
+		s, err = storage.NewFileStorage(filePath)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		fmt.Println("using inmemo")
+
+		s, err = storage.CreateMemoryStorage()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if s == nil {
+		panic(errors.New("NO STORAGE"))
+
+	}
+
+	resolver, err := services.NewURLResolver(8, s)
+	if err != nil {
+		panic(err)
+	}
+	r := server.Init(resolver, resultHostname, log, true, s)
 
 	log.Info(fmt.Sprintf("Server is running on: %s", hostname))
 	err = http.ListenAndServe(hostname, r)

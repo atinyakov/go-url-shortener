@@ -4,42 +4,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"sync"
 
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 type URLResolver struct {
+	storage           storage.StorageI
 	numCharsShortLink int
 	elements          string
-	ltos              map[string]string
-	stol              map[string]string
-	mu                sync.RWMutex
 }
 
 func NewURLResolver(numChars int, storage storage.StorageI) (*URLResolver, error) {
-	records, err := storage.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	var ltos, stol map[string]string
-	ltos = make(map[string]string)
-	stol = make(map[string]string)
-
-	for _, record := range records {
-		original := record.Original
-		short := record.Short
-		ltos[original] = short
-		stol[short] = original
-	}
-
 	return &URLResolver{
+		storage:           storage,
 		numCharsShortLink: numChars,
 		elements:          "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		ltos:              ltos,
-		stol:              stol,
-		mu:                sync.RWMutex{},
 	}, nil
 }
 
@@ -76,16 +55,20 @@ func (u *URLResolver) base16ToBase62(hexString string) string {
 	return string(sb)
 }
 
-func (u *URLResolver) LongToShort(url string) (string, bool) {
-	if short, exists := u.ltos[url]; exists {
-		return short, exists
+func (u *URLResolver) LongToShort(url string) (string, error) {
+	r, _ := u.storage.FindByOriginal(url)
+	if r.Short != "" {
+		fmt.Println("found existing", r.Short, "for", url)
+		return r.Short, nil
 	}
 
 	short := u.hashToShort(url)
 
-	u.mu.Lock()
 	collisionCount := 0
-	_, exists := u.stol[short]
+
+	r, _ = u.storage.FindByShort(short)
+	exists := r.Original != ""
+
 	if exists {
 		collisionCount++
 		modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
@@ -93,15 +76,23 @@ func (u *URLResolver) LongToShort(url string) (string, bool) {
 		exists = false
 	}
 
-	u.ltos[url] = short
-	u.stol[short] = url
-	u.mu.Unlock()
-	return short, exists
+	if !exists {
+		URLrecord := storage.URLRecord{Short: short, Original: url}
+
+		if err := u.storage.Write(URLrecord); err != nil {
+			return "", err
+		}
+
+	}
+
+	return short, nil
 }
 
 func (u *URLResolver) ShortToLong(short string) string {
-	if long, exists := u.stol[short]; exists {
-		return long
+	r, err := u.storage.FindByShort(short)
+	if err != nil {
+		return ""
 	}
-	return ""
+
+	return r.Original
 }

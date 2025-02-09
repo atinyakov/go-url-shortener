@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,15 +16,15 @@ type GetHandler struct {
 	Resolver *services.URLResolver
 	storage  storage.StorageI
 	logger   logger.LoggerI
-	db       *sql.DB
+	// db       *sql.DB
 }
 
-func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.LoggerI, db *sql.DB) *GetHandler {
+func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.LoggerI) *GetHandler {
 	return &GetHandler{
 		Resolver: resolver,
 		storage:  s,
 		logger:   l,
-		db:       db,
+		// db:       db,
 	}
 }
 
@@ -47,10 +46,10 @@ func (h *GetHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *GetHandler) HandlePing(res http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
-	if err := h.db.PingContext(ctx); err != nil {
-		http.Error(res, "db ping failed", http.StatusInternalServerError)
+	if err := h.storage.PingContext(ctx); err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 
 	res.WriteHeader(http.StatusOK)

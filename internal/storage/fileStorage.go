@@ -2,7 +2,9 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,12 +32,6 @@ func NewFileStorage(p string) (*FileStorage, error) {
 		file: file,
 		mu:   sync.RWMutex{},
 	}, nil
-}
-
-type URLRecord struct {
-	ID       string `json:"uuid" format:"uuid"`
-	Original string `json:"original_url"`
-	Short    string `json:"short_url"`
 }
 
 func (fs *FileStorage) Write(value URLRecord) error {
@@ -71,9 +67,43 @@ func (fs *FileStorage) Read() ([]URLRecord, error) {
 	return records, nil
 }
 
+func (fs *FileStorage) FindByOriginal(s string) (URLRecord, error) {
+	records, err := fs.Read()
+	if err != nil {
+		return URLRecord{}, err
+	}
+
+	for _, r := range records {
+		if r.Original == s {
+			return r, nil
+		}
+	}
+
+	return URLRecord{}, nil
+}
+
+func (fs *FileStorage) FindByShort(s string) (URLRecord, error) {
+	records, err := fs.Read()
+	if err != nil {
+		return URLRecord{}, err
+	}
+
+	for _, r := range records {
+		if r.Short == s {
+			return r, nil
+		}
+	}
+
+	return URLRecord{}, nil
+}
+
 func (fs *FileStorage) Close() error {
 	if fs.file != nil {
 		return fs.file.Close()
 	}
 	return nil
+}
+
+func (fs *FileStorage) PingContext(c context.Context) error {
+	return errors.ErrUnsupported
 }
