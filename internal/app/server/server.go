@@ -27,9 +27,13 @@ func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI,
 	}
 
 	r.Post("/", postHandler.HandlePostPlainBody)
-	r.Post("/api/shorten", postHandler.HandlePostJSON)
 	r.Get("/{url}", getHandler.HandleGet)
 	r.Get("/ping", getHandler.HandlePing)
+
+	r.Route("/api/shorten", func(r chi.Router) {
+		r.Post("/", postHandler.HandlePostJSON)
+		r.Post("/batch", postHandler.HandleBatch)
+	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Short URL is required", http.StatusBadRequest)

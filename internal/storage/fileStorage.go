@@ -42,6 +42,18 @@ func (fs *FileStorage) Write(value URLRecord) error {
 	return encoder.Encode(value)
 }
 
+func (fs *FileStorage) WriteAll(records []URLRecord) ([]URLRecord, error) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	for _, r := range records {
+		if err := fs.Write(r); err != nil {
+			return records, err
+		}
+	}
+	return records, nil
+}
+
 func (fs *FileStorage) Read() ([]URLRecord, error) {
 	// Reset file pointer to the beginning
 	_, err := fs.file.Seek(0, io.SeekStart)
@@ -90,6 +102,21 @@ func (fs *FileStorage) FindByShort(s string) (URLRecord, error) {
 
 	for _, r := range records {
 		if r.Short == s {
+			return r, nil
+		}
+	}
+
+	return URLRecord{}, nil
+}
+
+func (fs *FileStorage) FindByID(id string) (URLRecord, error) {
+	records, err := fs.Read()
+	if err != nil {
+		return URLRecord{}, err
+	}
+
+	for _, r := range records {
+		if r.ID == id {
 			return r, nil
 		}
 	}

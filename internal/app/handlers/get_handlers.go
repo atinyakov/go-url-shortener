@@ -32,13 +32,14 @@ func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.
 func (h *GetHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
 	shortURL := chi.URLParam(req, "url")
 
-	fmt.Println("sorturl", shortURL)
+	fmt.Println("short url:", shortURL)
 
 	longURL := h.Resolver.ShortToLong(shortURL)
 	if longURL == "" {
 		http.Error(res, "URL not found", http.StatusNotFound)
 		return
 	}
+	fmt.Println("Found LONG url:", longURL)
 
 	res.Header().Set("Location", longURL)
 

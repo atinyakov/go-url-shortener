@@ -55,18 +55,27 @@ func (u *URLResolver) base16ToBase62(hexString string) string {
 	return string(sb)
 }
 
-func (u *URLResolver) LongToShort(url string) (string, error) {
-	r, _ := u.storage.FindByOriginal(url)
+func (u *URLResolver) LongToShort(url string) (string, bool, error) {
+	r, err := u.storage.FindByOriginal(url)
+	if err != nil {
+		fmt.Println("HERE !")
+		return "", false, err
+	}
+
 	if r.Short != "" {
-		fmt.Println("found existing", r.Short, "for", url)
-		return r.Short, nil
+
+		return r.Short, true, nil
 	}
 
 	short := u.hashToShort(url)
 
 	collisionCount := 0
 
-	r, _ = u.storage.FindByShort(short)
+	r, err = u.storage.FindByShort(short)
+	if err != nil {
+		return "", false, err
+	}
+
 	exists := r.Original != ""
 
 	if exists {
@@ -76,16 +85,7 @@ func (u *URLResolver) LongToShort(url string) (string, error) {
 		exists = false
 	}
 
-	if !exists {
-		URLrecord := storage.URLRecord{Short: short, Original: url}
-
-		if err := u.storage.Write(URLrecord); err != nil {
-			return "", err
-		}
-
-	}
-
-	return short, nil
+	return short, exists, nil
 }
 
 func (u *URLResolver) ShortToLong(short string) string {

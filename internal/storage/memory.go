@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 type MemoryStorage struct {
@@ -30,14 +31,25 @@ func (m *MemoryStorage) Write(record URLRecord) error {
 	return nil
 }
 
+func (m *MemoryStorage) WriteAll(records []URLRecord) ([]URLRecord, error) {
+	for _, r := range records {
+		e := m.Write(r)
+		if e != nil {
+			return records, e
+		}
+	}
+	return records, nil
+}
+
 func (m *MemoryStorage) FindByShort(short string) (URLRecord, error) {
+	fmt.Println(m.stol)
 	if long, exists := m.stol[short]; exists {
 		return URLRecord{
 			Short:    short,
 			Original: long,
 		}, nil
 	}
-	return URLRecord{}, errors.New("not found")
+	return URLRecord{}, nil
 }
 
 func (m *MemoryStorage) FindByOriginal(long string) (URLRecord, error) {
@@ -48,9 +60,20 @@ func (m *MemoryStorage) FindByOriginal(long string) (URLRecord, error) {
 		}, nil
 	}
 
-	return URLRecord{}, errors.New("not found")
+	return URLRecord{}, nil
 }
 
 func (m *MemoryStorage) PingContext(c context.Context) error {
 	return errors.ErrUnsupported
+}
+
+func (m *MemoryStorage) FindByID(id string) (URLRecord, error) {
+	// if short, exists := m.ltos[long]; exists {
+	// 	return URLRecord{
+	// 		Short:    short,
+	// 		Original: long,
+	// 	}, nil
+	// }
+
+	return URLRecord{}, errors.New("not found")
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -46,7 +47,15 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	shortURL, storageErr := h.Resolver.LongToShort(originalURL)
+	shortURL, exists, storageErr := h.Resolver.LongToShort(originalURL)
+
+	if !exists {
+		URLrecord := storage.URLRecord{Short: shortURL, Original: originalURL}
+
+		if err := h.storage.Write(URLrecord); err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 
 	if storageErr != nil {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -78,14 +87,88 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	h.logger.Info("Got Url: %s", request.URL)
+	fmt.Println("got URL", request.URL)
+	shortURL, exists, err := h.Resolver.LongToShort(request.URL)
 
-	shortURL, err := h.Resolver.LongToShort(request.URL)
+	if !exists {
+		URLrecord := storage.URLRecord{Short: shortURL, Original: request.URL}
+
+		if err := h.storage.Write(URLrecord); err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 
 	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+
+	_, writeErr := res.Write(response)
+	if writeErr != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+
+}
+
+func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
+	var urlsR []models.BatchRequest
+
+	err := decodeJSONBody(res, req, &urlsR)
+	if err != nil {
+		var mr *malformedRequest
+		if errors.As(err, &mr) {
+			http.Error(res, mr.msg, mr.status)
+		} else {
+			log.Print(err.Error())
+			http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	var newRecords []storage.URLRecord
+	var resultExisting []models.BatchResponse
+
+	for _, url := range urlsR {
+		fmt.Println("looking fof", url.CorrelationID)
+		v, _ := h.storage.FindByID(url.CorrelationID)
+		fmt.Println("got", v)
+
+		if v.Short != "" {
+			resultExisting = append(resultExisting, models.BatchResponse{CorrelationID: v.ID, ShortURL: h.baseURL + "/" + v.Short})
+		} else {
+			short, _, _ := h.Resolver.LongToShort(url.OriginalURL)
+
+			newRecords = append(newRecords, storage.URLRecord{Original: url.OriginalURL, Short: short})
+
+		}
+	}
+
+	var resultNew []models.BatchResponse
+	fmt.Println("newRecords", newRecords)
+
+	if len(newRecords) != 0 {
+
+		fmt.Println("WRITE NEW REC", newRecords)
+
+		newR, err := h.storage.WriteAll(newRecords)
+		if err != nil {
+			h.logger.Info(err.Error())
+		}
+		fmt.Println("got newr", newR)
+
+		for _, nr := range newR {
+			resultNew = append(resultNew, models.BatchResponse{CorrelationID: nr.ID, ShortURL: h.baseURL + "/" + nr.Short})
+		}
+	}
+
+	fmt.Println("resultNew", resultNew)
+	resultArr := append(resultExisting, resultNew...)
+
+	response, _ := json.Marshal(resultArr)
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
