@@ -12,14 +12,10 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-type StorageI interface {
-	Write(value storage.URLRecord) error
-	Read() ([]storage.URLRecord, error)
-}
+func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs storage.StorageI) *chi.Mux {
 
-func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs StorageI) *chi.Mux {
-
-	handler := handlers.NewURLHandler(resolver, baseURL, fs, logger)
+	getHandler := handlers.NewGetHandler(resolver, fs, logger)
+	postHandler := handlers.NewPostHandler(resolver, baseURL, fs, logger)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))
@@ -30,9 +26,9 @@ func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI,
 		r.Use(middleware.WithGZIPGet)
 	}
 
-	r.Post("/", handler.HandlePostPlainBody)
-	r.Post("/api/shorten", handler.HandlePostJSON)
-	r.Get("/{url}", handler.HandleGet)
+	r.Post("/", postHandler.HandlePostPlainBody)
+	r.Post("/api/shorten", postHandler.HandlePostJSON)
+	r.Get("/{url}", getHandler.HandleGet)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Short URL is required", http.StatusBadRequest)

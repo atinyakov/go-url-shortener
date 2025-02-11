@@ -9,20 +9,15 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
-var mu sync.Mutex
-
 type URLResolver struct {
 	numCharsShortLink int
 	elements          string
 	ltos              map[string]string
 	stol              map[string]string
+	mu                sync.RWMutex
 }
 
-type StorageI interface {
-	Read() ([]storage.URLRecord, error)
-}
-
-func NewURLResolver(numChars int, storage StorageI) (*URLResolver, error) {
+func NewURLResolver(numChars int, storage storage.StorageI) (*URLResolver, error) {
 	records, err := storage.Read()
 	if err != nil {
 		return nil, err
@@ -44,6 +39,7 @@ func NewURLResolver(numChars int, storage StorageI) (*URLResolver, error) {
 		elements:          "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
 		ltos:              ltos,
 		stol:              stol,
+		mu:                sync.RWMutex{},
 	}, nil
 }
 
@@ -87,7 +83,7 @@ func (u *URLResolver) LongToShort(url string) (string, bool) {
 
 	short := u.hashToShort(url)
 
-	mu.Lock()
+	u.mu.Lock()
 	collisionCount := 0
 	_, exists := u.stol[short]
 	if exists {
@@ -99,7 +95,7 @@ func (u *URLResolver) LongToShort(url string) (string, bool) {
 
 	u.ltos[url] = short
 	u.stol[short] = url
-	mu.Unlock()
+	u.mu.Unlock()
 	return short, exists
 }
 

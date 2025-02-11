@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,24 +11,18 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-type StorageI interface {
-	Write(value storage.URLRecord) error
-	Read() ([]storage.URLRecord, error)
-}
-
-type URLHandler struct {
+type PostHandler struct {
 	Resolver *services.URLResolver
 	baseURL  string
-	storage  StorageI
+	storage  storage.StorageI
 	logger   logger.LoggerI
 }
 
-func NewURLHandler(resolver *services.URLResolver, baseURL string, s StorageI, l logger.LoggerI) *URLHandler {
-	return &URLHandler{
+func NewPostHandler(resolver *services.URLResolver, baseURL string, s storage.StorageI, l logger.LoggerI) *PostHandler {
+	return &PostHandler{
 		Resolver: resolver,
 		baseURL:  baseURL,
 		storage:  s,
@@ -38,7 +31,7 @@ func NewURLHandler(resolver *services.URLResolver, baseURL string, s StorageI, l
 }
 
 // HandlePostPlainBody handles POST requests for URL shortening
-func (h *URLHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Request) {
+func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	defer req.Body.Close()
 
@@ -58,7 +51,6 @@ func (h *URLHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Requ
 	URLrecord := storage.URLRecord{Short: shortURL, Original: originalURL, ID: uuid.New().String()}
 
 	if !exists {
-
 		if storageErr := h.storage.Write(URLrecord); storageErr != nil {
 			res.WriteHeader(http.StatusInternalServerError)
 		}
@@ -75,7 +67,7 @@ func (h *URLHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Requ
 }
 
 // HandlePostJSON handles POST requests for URL shortening
-func (h *URLHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) {
+func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) {
 
 	var request models.Request
 
@@ -91,7 +83,8 @@ func (h *URLHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	fmt.Println("got URL", request.URL)
+	h.logger.Info("Got Url: %s", request.URL)
+
 	shortURL, exists := h.Resolver.LongToShort(request.URL)
 	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
 
@@ -112,21 +105,4 @@ func (h *URLHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) 
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 
-}
-
-// HandleGet handles GET requests for URL resolution
-func (h *URLHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
-	shortURL := chi.URLParam(req, "url")
-
-	fmt.Println("sorturl", shortURL)
-
-	longURL := h.Resolver.ShortToLong(shortURL)
-	if longURL == "" {
-		http.Error(res, "URL not found", http.StatusNotFound)
-		return
-	}
-
-	res.Header().Set("Location", longURL)
-
-	res.WriteHeader(http.StatusTemporaryRedirect)
 }

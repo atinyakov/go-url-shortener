@@ -12,12 +12,10 @@ import (
 
 type FileStorage struct {
 	file *os.File
-	mu   *sync.Mutex
+	mu   sync.RWMutex
 }
 
 func NewFileStorate(p string) (*FileStorage, error) {
-	var mu sync.Mutex
-
 	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
 		return nil, err
 	}
@@ -30,7 +28,7 @@ func NewFileStorate(p string) (*FileStorage, error) {
 
 	return &FileStorage{
 		file: file,
-		mu:   &mu,
+		mu:   sync.RWMutex{},
 	}, nil
 }
 
@@ -71,4 +69,11 @@ func (fs *FileStorage) Read() ([]URLRecord, error) {
 	}
 
 	return records, nil
+}
+
+func (fs *FileStorage) Close() error {
+	if fs.file != nil {
+		return fs.file.Close()
+	}
+	return nil
 }
