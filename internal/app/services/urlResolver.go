@@ -5,24 +5,42 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
-)
 
-var mu sync.Mutex
+	"github.com/atinyakov/go-url-shortener/internal/storage"
+)
 
 type URLResolver struct {
 	numCharsShortLink int
 	elements          string
 	ltos              map[string]string
 	stol              map[string]string
+	mu                sync.RWMutex
 }
 
-func NewURLResolver(numChars int) *URLResolver {
+func NewURLResolver(numChars int, storage storage.StorageI) (*URLResolver, error) {
+	records, err := storage.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var ltos, stol map[string]string
+	ltos = make(map[string]string)
+	stol = make(map[string]string)
+
+	for _, record := range records {
+		original := record.Original
+		short := record.Short
+		ltos[original] = short
+		stol[short] = original
+	}
+
 	return &URLResolver{
 		numCharsShortLink: numChars,
 		elements:          "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		ltos:              make(map[string]string),
-		stol:              make(map[string]string),
-	}
+		ltos:              ltos,
+		stol:              stol,
+		mu:                sync.RWMutex{},
+	}, nil
 }
 
 func (u *URLResolver) hashToShort(url string) string {
@@ -58,25 +76,27 @@ func (u *URLResolver) base16ToBase62(hexString string) string {
 	return string(sb)
 }
 
-func (u *URLResolver) LongToShort(url string) string {
+func (u *URLResolver) LongToShort(url string) (string, bool) {
 	if short, exists := u.ltos[url]; exists {
-		return short
+		return short, exists
 	}
 
 	short := u.hashToShort(url)
 
-	mu.Lock()
+	u.mu.Lock()
 	collisionCount := 0
-	for _, exists := u.stol[short]; exists; {
+	_, exists := u.stol[short]
+	if exists {
 		collisionCount++
 		modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
 		short = u.hashToShort(modifiedInput)
+		exists = false
 	}
 
 	u.ltos[url] = short
 	u.stol[short] = url
-	mu.Unlock()
-	return short
+	u.mu.Unlock()
+	return short, exists
 }
 
 func (u *URLResolver) ShortToLong(short string) string {
