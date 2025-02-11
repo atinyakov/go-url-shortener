@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 )
 
@@ -15,10 +16,17 @@ type Options struct {
 func Init() *Options {
 	options := &Options{}
 
+	dbStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
+		`127.0.0.1`,
+		`admin`,
+		`admin`,
+		`yandex`,
+	)
+
 	flag.StringVar(&options.Port, "a", "localhost:8080", "run on ip:port server")
 	flag.StringVar(&options.ResultHostname, "b", "http://localhost:8080", "result base url")
 	flag.StringVar(&options.FilePath, "f", "./urls", "path to storage file")
-	flag.StringVar(&options.DatabaseDSN, "d", "localhost", "db address")
+	flag.StringVar(&options.DatabaseDSN, "d", dbStr, "db address")
 
 	flag.Parse()
 
@@ -32,6 +40,10 @@ func Init() *Options {
 
 	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
 		options.FilePath = storagePath
+	}
+
+	if dbstr := os.Getenv("DATABASE_DSN"); dbstr != "" {
+		options.DatabaseDSN = dbstr
 	}
 
 	return options

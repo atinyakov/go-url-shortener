@@ -7,10 +7,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func InitDb(host string) *sql.DB {
-	ps := fmt.Sprintf("host=%s user=%s port=5432 password=%s dbname=%s sslmode=disable",
-		host, `db_tus`, `qwerty`, `urls`)
-
+func InitDB(ps string) *sql.DB {
 	db, err := sql.Open("pgx", ps)
 	if err != nil {
 		panic(err)

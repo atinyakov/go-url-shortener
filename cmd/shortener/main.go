@@ -19,9 +19,9 @@ func main() {
 	hostname := options.Port
 	resultHostname := options.ResultHostname
 	filePath := options.FilePath
-	dbAddress := options.DatabaseDSN
+	dbName := options.DatabaseDSN
 
-	db := repository.InitDb(dbAddress)
+	db := repository.InitDB(dbName)
 	defer db.Close()
 
 	log := logger.New()
