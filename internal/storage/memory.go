@@ -31,14 +31,14 @@ func (m *MemoryStorage) Write(record URLRecord) error {
 	return nil
 }
 
-func (m *MemoryStorage) WriteAll(records []URLRecord) ([]URLRecord, error) {
+func (m *MemoryStorage) WriteAll(records []URLRecord) error {
 	for _, r := range records {
 		e := m.Write(r)
 		if e != nil {
-			return records, e
+			return e
 		}
 	}
-	return records, nil
+	return nil
 }
 
 func (m *MemoryStorage) FindByShort(short string) (URLRecord, error) {
@@ -68,12 +68,5 @@ func (m *MemoryStorage) PingContext(c context.Context) error {
 }
 
 func (m *MemoryStorage) FindByID(id string) (URLRecord, error) {
-	// if short, exists := m.ltos[long]; exists {
-	// 	return URLRecord{
-	// 		Short:    short,
-	// 		Original: long,
-	// 	}, nil
-	// }
-
 	return URLRecord{}, errors.New("not found")
 }

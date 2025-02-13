@@ -42,16 +42,16 @@ func (fs *FileStorage) Write(value URLRecord) error {
 	return encoder.Encode(value)
 }
 
-func (fs *FileStorage) WriteAll(records []URLRecord) ([]URLRecord, error) {
+func (fs *FileStorage) WriteAll(records []URLRecord) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
 	for _, r := range records {
 		if err := fs.Write(r); err != nil {
-			return records, err
+			return err
 		}
 	}
-	return records, nil
+	return nil
 }
 
 func (fs *FileStorage) Read() ([]URLRecord, error) {

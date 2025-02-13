@@ -57,30 +57,22 @@ func (r *URLRepository) Write(v storage.URLRecord) error {
 	return nil
 }
 
-func (r *URLRepository) WriteAll(rs []storage.URLRecord) ([]storage.URLRecord, error) {
+func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	result := make([]storage.URLRecord, 0)
-
 	for _, v := range rs {
-		var id string
-		err = tx.QueryRow("INSERT INTO url_records(original_url , short_url) VALUES ($1, $2) RETURNING id", v.Original, v.Short).Scan(&id)
+		_, err = tx.Exec("INSERT INTO url_records(original_url , short_url, id) VALUES ($1, $2, $3)", v.Original, v.Short, v.ID)
 		if err != nil {
 			tx.Rollback()
 			fmt.Println("ROOOOOOOOOOOOOOOOOLBACK!", err.Error())
-			return nil, err
+			return err
 		}
-
-		result = append(result, storage.URLRecord{ID: id, Original: v.Original, Short: v.Short})
-
 	}
 
-	tx.Commit()
-
-	return result, nil
+	return tx.Commit()
 }
 
 func (r *URLRepository) Read() ([]storage.URLRecord, error) {
@@ -104,7 +96,6 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 		records = append(records, r)
 	}
 
-	// проверяем на ошибки
 	err = rows.Err()
 	if err != nil {
 		return nil, err
@@ -118,11 +109,10 @@ func (r *URLRepository) FindByShort(s string) (storage.URLRecord, error) {
 	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1", s)
 
 	var id, originalURL, shortURL string
-	fmt.Println("res")
 
 	err := row.Scan(&id, &originalURL, &shortURL)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("FindByShort", err.Error())
 		return storage.URLRecord{}, nil
 	}
 
@@ -137,14 +127,13 @@ func (r *URLRepository) FindByShort(s string) (storage.URLRecord, error) {
 }
 
 func (r *URLRepository) FindByOriginal(s string) (storage.URLRecord, error) {
-	fmt.Println("repo got long", s)
 	row := r.db.QueryRow("SELECT * FROM url_records WHERE original_url = $1;", s)
 
 	var id, original, short string
 
 	err := row.Scan(&id, &original, &short)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("FindByOriginal", err.Error())
 		return storage.URLRecord{}, nil
 	}
 

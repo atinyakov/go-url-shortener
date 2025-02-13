@@ -129,46 +129,28 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var newRecords []storage.URLRecord
-	var resultExisting []models.BatchResponse
+	var resultNew []models.BatchResponse
 
-	for _, url := range urlsR {
-		fmt.Println("looking fof", url.CorrelationID)
-		v, _ := h.storage.FindByID(url.CorrelationID)
-		fmt.Println("got", v)
+	if len(urlsR) != 0 {
+		var records = make([]storage.URLRecord, 0)
 
-		if v.Short != "" {
-			resultExisting = append(resultExisting, models.BatchResponse{CorrelationID: v.ID, ShortURL: h.baseURL + "/" + v.Short})
-		} else {
+		for _, url := range urlsR {
 			short, _, _ := h.Resolver.LongToShort(url.OriginalURL)
 
-			newRecords = append(newRecords, storage.URLRecord{Original: url.OriginalURL, Short: short})
-
+			records = append(records, storage.URLRecord{Original: url.OriginalURL, ID: url.CorrelationID, Short: short})
 		}
-	}
 
-	var resultNew []models.BatchResponse
-	fmt.Println("newRecords", newRecords)
-
-	if len(newRecords) != 0 {
-
-		fmt.Println("WRITE NEW REC", newRecords)
-
-		newR, err := h.storage.WriteAll(newRecords)
+		err := h.storage.WriteAll(records)
 		if err != nil {
 			h.logger.Info(err.Error())
 		}
-		fmt.Println("got newr", newR)
 
-		for _, nr := range newR {
+		for _, nr := range records {
 			resultNew = append(resultNew, models.BatchResponse{CorrelationID: nr.ID, ShortURL: h.baseURL + "/" + nr.Short})
 		}
 	}
 
-	fmt.Println("resultNew", resultNew)
-	resultArr := append(resultExisting, resultNew...)
-
-	response, _ := json.Marshal(resultArr)
+	response, _ := json.Marshal(resultNew)
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
@@ -177,5 +159,4 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 	if writeErr != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
-
 }

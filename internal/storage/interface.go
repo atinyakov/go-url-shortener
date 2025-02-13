@@ -4,7 +4,7 @@ import "context"
 
 type StorageI interface {
 	Write(URLRecord) error
-	WriteAll([]URLRecord) ([]URLRecord, error)
+	WriteAll([]URLRecord) error
 	Read() ([]URLRecord, error)
 	FindByOriginal(string) (URLRecord, error)
 	FindByShort(string) (URLRecord, error)

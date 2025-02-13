@@ -34,17 +34,17 @@ func main() {
 	if dbName != "" {
 		db := repository.InitDB(dbName)
 		defer db.Close()
-		fmt.Println("using db")
+		log.Info("using db")
 		s = repository.CreateURLRepository(db)
 	} else if filePath != "" {
-		fmt.Println("using file")
+		log.Info("using file")
 
 		s, err = storage.NewFileStorage(filePath)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		fmt.Println("using inmemo")
+		log.Info("using in memory storage")
 
 		s, err = storage.CreateMemoryStorage()
 		if err != nil {
