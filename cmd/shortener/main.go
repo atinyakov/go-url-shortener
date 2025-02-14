@@ -32,12 +32,12 @@ func main() {
 	}
 
 	if dbName != "" {
+		log.Info(fmt.Sprintf("using db %s", dbName))
 		db := repository.InitDB(dbName)
 		defer db.Close()
-		log.Info("using db")
 		s = repository.CreateURLRepository(db)
 	} else if filePath != "" {
-		log.Info("using file")
+		log.Info(fmt.Sprintf("using file %s", filePath))
 
 		s, err = storage.NewFileStorage(filePath)
 		if err != nil {

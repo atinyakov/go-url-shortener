@@ -55,42 +55,43 @@ func (u *URLResolver) base16ToBase62(hexString string) string {
 	return string(sb)
 }
 
-func (u *URLResolver) LongToShort(url string) (string, bool, error) {
-	r, err := u.storage.FindByOriginal(url)
-	if err != nil {
-		fmt.Println("HERE !")
-		return "", false, err
-	}
+func (u *URLResolver) LongToShort(url string) string {
+	// r, err := u.storage.FindByOriginal(url)
+	// if err != nil {
+	// 	fmt.Println("HERE !")
+	// 	return "", false, err
+	// }
 
-	if r.Short != "" {
+	// if r.Short != "" {
 
-		return r.Short, true, nil
-	}
+	// 	return r.Short, true, nil
+	// }
 
-	short := u.hashToShort(url)
+	// short := u.hashToShort(url)
 
-	collisionCount := 0
+	// collisionCount := 0
 
-	r, err = u.storage.FindByShort(short)
-	if err != nil {
-		return "", false, err
-	}
+	// r, err := u.storage.FindByShort(short)
+	// if err != nil {
+	// 	return "", false, err
+	// }
 
-	exists := r.Original != ""
+	// exists := r.Original != ""
 
-	if exists {
-		collisionCount++
-		modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
-		short = u.hashToShort(modifiedInput)
-		exists = false
-	}
+	// if exists {
+	// 	collisionCount++
+	// 	modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
+	// 	short = u.hashToShort(modifiedInput)
+	// 	exists = false
+	// }
 
-	return short, exists, nil
+	return u.hashToShort(url)
 }
 
 func (u *URLResolver) ShortToLong(short string) string {
 	r, err := u.storage.FindByShort(short)
 	if err != nil {
+		fmt.Println("ShortToLong got error", err.Error())
 		return ""
 	}
 

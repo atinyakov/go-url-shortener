@@ -95,11 +95,15 @@ func (fs *FileStorage) FindByOriginal(s string) (URLRecord, error) {
 }
 
 func (fs *FileStorage) FindByShort(s string) (URLRecord, error) {
+	fmt.Println("got short", s)
 	records, err := fs.Read()
 	if err != nil {
+		fmt.Println("got error", err.Error())
+
 		return URLRecord{}, err
 	}
 
+	fmt.Println("got records", records)
 	for _, r := range records {
 		if r.Short == s {
 			return r, nil

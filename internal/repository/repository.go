@@ -3,12 +3,15 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+var ErrConflict = errors.New("data conflict")
 
 func InitDB(ps string) *sql.DB {
 	db, err := sql.Open("pgx", ps)
@@ -24,7 +27,7 @@ func InitDB(ps string) *sql.DB {
 	createTable := `
 		CREATE TABLE IF NOT EXISTS url_records (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		original_url TEXT NOT NULL,
+		original_url TEXT UNIQUE NOT NULL,
 		short_url TEXT UNIQUE NOT NULL
 	);`
 
@@ -48,12 +51,27 @@ func CreateURLRepository(db *sql.DB) *URLRepository {
 }
 
 func (r *URLRepository) Write(v storage.URLRecord) error {
-	_, err := r.db.Exec("INSERT INTO url_records(original_url , short_url) VALUES ($1, $2)", v.Original, v.Short)
+	res, err := r.db.Exec(
+		"INSERT INTO url_records(original_url, short_url) VALUES ($1, $2) ON CONFLICT (original_url) DO NOTHING;",
+		v.Original, v.Short,
+	)
 
+	if err != nil {
+		fmt.Println("Write error:", err.Error())
+		return err
+	}
+
+	// Check if any row was inserted
+	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
 
+	if rowsAffected == 0 {
+		return ErrConflict // Custom error indicating conflict
+	}
+
+	fmt.Println("Insert successful!")
 	return nil
 }
 
@@ -64,7 +82,7 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	}
 
 	for _, v := range rs {
-		_, err = tx.Exec("INSERT INTO url_records(original_url , short_url, id) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING;", v.Original, v.Short, v.ID)
+		_, err = tx.Exec("INSERT INTO url_records(original_url , short_url, id) VALUES ($1, $2, $3);", v.Original, v.Short, v.ID)
 
 		if err != nil {
 			tx.Rollback()
@@ -77,7 +95,7 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 }
 
 func (r *URLRepository) Read() ([]storage.URLRecord, error) {
-	rows, err := r.db.Query("SELECT * FROM url_records")
+	rows, err := r.db.Query("SELECT * FROM url_records;")
 
 	if err != nil {
 		return nil, err
@@ -107,7 +125,7 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 }
 
 func (r *URLRepository) FindByShort(s string) (storage.URLRecord, error) {
-	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1", s)
+	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", s)
 
 	var id, originalURL, shortURL string
 

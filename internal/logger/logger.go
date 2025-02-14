@@ -5,8 +5,9 @@ import (
 )
 
 type LoggerI interface {
-	Info(msg string, keysAndValues ...interface{})
 	Init(lvl string) error
+	Info(msg string, keysAndValues ...interface{})
+	Error(msg string, keysAndValues ...interface{})
 }
 
 type Logger struct {

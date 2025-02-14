@@ -11,9 +11,8 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
+	"github.com/atinyakov/go-url-shortener/internal/repository"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type PostHandler struct {
@@ -49,20 +48,27 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	shortURL, exists, storageErr := h.Resolver.LongToShort(originalURL)
+	shortURL := h.Resolver.LongToShort(originalURL)
 
-	if !exists {
-		URLrecord := storage.URLRecord{Short: shortURL, Original: originalURL}
+	URLrecord := storage.URLRecord{Short: shortURL, Original: originalURL}
 
-		if err := h.storage.Write(URLrecord); err != nil {
+	err = h.storage.Write(URLrecord)
+
+	if err != nil {
+
+		if errors.Is(err, repository.ErrConflict) {
+			h.logger.Info(fmt.Sprintf("URL %s already exists", originalURL))
+			res.WriteHeader(http.StatusConflict)
+
+		} else {
+			h.logger.Info(fmt.Sprintf("unable to insert row: %s", err.Error()))
 			res.WriteHeader(http.StatusInternalServerError)
 		}
-	}
+		// return fmt.Errorf("unable to insert row: %w", err)
+	} else {
 
-	if storageErr != nil {
-		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteHeader(http.StatusCreated)
 	}
-
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusCreated)
 
@@ -90,25 +96,33 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 	}
 
 	fmt.Println("got URL", request.URL)
-	shortURL, exists, err := h.Resolver.LongToShort(request.URL)
+	shortURL := h.Resolver.LongToShort(request.URL)
 
-	if !exists {
-		URLrecord := storage.URLRecord{Short: shortURL, Original: request.URL}
+	// if !exists {
+	URLrecord := storage.URLRecord{Short: shortURL, Original: request.URL}
 
-		if err := h.storage.Write(URLrecord); err != nil {
-			res.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	if err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-	}
-
-	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
+	err = h.storage.Write(URLrecord)
+	// if err != nil {
+	// 	res.WriteHeader(http.StatusInternalServerError)
+	// }
 
 	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
+	if err != nil {
 
+		if errors.Is(err, repository.ErrConflict) {
+			h.logger.Info(fmt.Sprintf("URL %s already exists", request.URL))
+			res.WriteHeader(http.StatusConflict)
+
+		} else {
+			h.logger.Info(fmt.Sprintf("unable to insert row: %s", err.Error()))
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+		// return fmt.Errorf("unable to insert row: %w", err)
+	} else {
+
+		res.WriteHeader(http.StatusCreated)
+	}
+	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
 	_, writeErr := res.Write(response)
 	if writeErr != nil {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -137,7 +151,7 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 		var records = make([]storage.URLRecord, 0)
 
 		for _, url := range urlsR {
-			short, _, _ := h.Resolver.LongToShort(url.OriginalURL)
+			short := h.Resolver.LongToShort(url.OriginalURL)
 
 			records = append(records, storage.URLRecord{Original: url.OriginalURL, ID: url.CorrelationID, Short: short})
 		}
@@ -147,14 +161,14 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 			h.logger.Info(err.Error())
 		}
 
-		if err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-				fmt.Println("UniqueViolation")
-				h.logger.Info(err.Error())
+		// if err != nil {
+		// 	var pgErr *pgconn.PgError
+		// 	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		// 		fmt.Println("UniqueViolation")
+		// 		h.logger.Info(err.Error())
 
-			}
-		}
+		// 	}
+		// }
 
 		for _, nr := range records {
 			resultNew = append(resultNew, models.BatchResponse{CorrelationID: nr.ID, ShortURL: h.baseURL + "/" + nr.Short})
