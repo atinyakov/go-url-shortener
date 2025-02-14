@@ -56,35 +56,6 @@ func (u *URLResolver) base16ToBase62(hexString string) string {
 }
 
 func (u *URLResolver) LongToShort(url string) string {
-	// r, err := u.storage.FindByOriginal(url)
-	// if err != nil {
-	// 	fmt.Println("HERE !")
-	// 	return "", false, err
-	// }
-
-	// if r.Short != "" {
-
-	// 	return r.Short, true, nil
-	// }
-
-	// short := u.hashToShort(url)
-
-	// collisionCount := 0
-
-	// r, err := u.storage.FindByShort(short)
-	// if err != nil {
-	// 	return "", false, err
-	// }
-
-	// exists := r.Original != ""
-
-	// if exists {
-	// 	collisionCount++
-	// 	modifiedInput := fmt.Sprintf("%s%d", url, collisionCount)
-	// 	short = u.hashToShort(modifiedInput)
-	// 	exists = false
-	// }
-
 	return u.hashToShort(url)
 }
 

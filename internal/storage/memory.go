@@ -52,17 +52,6 @@ func (m *MemoryStorage) FindByShort(short string) (URLRecord, error) {
 	return URLRecord{}, nil
 }
 
-func (m *MemoryStorage) FindByOriginal(long string) (URLRecord, error) {
-	if short, exists := m.ltos[long]; exists {
-		return URLRecord{
-			Short:    short,
-			Original: long,
-		}, nil
-	}
-
-	return URLRecord{}, nil
-}
-
 func (m *MemoryStorage) PingContext(c context.Context) error {
 	return errors.ErrUnsupported
 }

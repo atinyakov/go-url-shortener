@@ -64,11 +64,10 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 			h.logger.Info(fmt.Sprintf("unable to insert row: %s", err.Error()))
 			res.WriteHeader(http.StatusInternalServerError)
 		}
-		// return fmt.Errorf("unable to insert row: %w", err)
 	} else {
-
 		res.WriteHeader(http.StatusCreated)
 	}
+
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusCreated)
 
@@ -95,16 +94,11 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	fmt.Println("got URL", request.URL)
 	shortURL := h.Resolver.LongToShort(request.URL)
 
-	// if !exists {
 	URLrecord := storage.URLRecord{Short: shortURL, Original: request.URL}
 
 	err = h.storage.Write(URLrecord)
-	// if err != nil {
-	// 	res.WriteHeader(http.StatusInternalServerError)
-	// }
 
 	res.Header().Set("Content-Type", "application/json")
 	if err != nil {
@@ -117,11 +111,10 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 			h.logger.Info(fmt.Sprintf("unable to insert row: %s", err.Error()))
 			res.WriteHeader(http.StatusInternalServerError)
 		}
-		// return fmt.Errorf("unable to insert row: %w", err)
 	} else {
-
 		res.WriteHeader(http.StatusCreated)
 	}
+
 	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
 	_, writeErr := res.Write(response)
 	if writeErr != nil {
@@ -160,15 +153,6 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			h.logger.Info(err.Error())
 		}
-
-		// if err != nil {
-		// 	var pgErr *pgconn.PgError
-		// 	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-		// 		fmt.Println("UniqueViolation")
-		// 		h.logger.Info(err.Error())
-
-		// 	}
-		// }
 
 		for _, nr := range records {
 			resultNew = append(resultNew, models.BatchResponse{CorrelationID: nr.ID, ShortURL: h.baseURL + "/" + nr.Short})

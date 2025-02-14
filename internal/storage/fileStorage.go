@@ -79,21 +79,6 @@ func (fs *FileStorage) Read() ([]URLRecord, error) {
 	return records, nil
 }
 
-func (fs *FileStorage) FindByOriginal(s string) (URLRecord, error) {
-	records, err := fs.Read()
-	if err != nil {
-		return URLRecord{}, err
-	}
-
-	for _, r := range records {
-		if r.Original == s {
-			return r, nil
-		}
-	}
-
-	return URLRecord{}, nil
-}
-
 func (fs *FileStorage) FindByShort(s string) (URLRecord, error) {
 	fmt.Println("got short", s)
 	records, err := fs.Read()

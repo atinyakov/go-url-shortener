@@ -15,7 +15,6 @@ type GetHandler struct {
 	Resolver *services.URLResolver
 	storage  storage.StorageI
 	logger   logger.LoggerI
-	// db       *sql.DB
 }
 
 func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.LoggerI) *GetHandler {
@@ -23,7 +22,6 @@ func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.
 		Resolver: resolver,
 		storage:  s,
 		logger:   l,
-		// db:       db,
 	}
 }
 

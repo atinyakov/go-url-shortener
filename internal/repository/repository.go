@@ -61,14 +61,13 @@ func (r *URLRepository) Write(v storage.URLRecord) error {
 		return err
 	}
 
-	// Check if any row was inserted
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
 
 	if rowsAffected == 0 {
-		return ErrConflict // Custom error indicating conflict
+		return ErrConflict
 	}
 
 	fmt.Println("Insert successful!")
@@ -86,7 +85,7 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 
 		if err != nil {
 			tx.Rollback()
-			fmt.Println("ROOOOOOOOOOOOOOOOOLBACK!", err.Error())
+			fmt.Println("ROLBACK!", err.Error())
 			return err
 		}
 	}
@@ -142,25 +141,6 @@ func (r *URLRepository) FindByShort(s string) (storage.URLRecord, error) {
 	}
 
 	return res, nil
-
-}
-
-func (r *URLRepository) FindByOriginal(s string) (storage.URLRecord, error) {
-	row := r.db.QueryRow("SELECT * FROM url_records WHERE original_url = $1;", s)
-
-	var id, original, short string
-
-	err := row.Scan(&id, &original, &short)
-	if err != nil {
-		fmt.Println("FindByOriginal", err.Error())
-		return storage.URLRecord{}, nil
-	}
-
-	return storage.URLRecord{
-		ID:       id,
-		Original: original,
-		Short:    short,
-	}, nil
 
 }
 
