@@ -64,7 +64,8 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	}
 
 	for _, v := range rs {
-		_, err = tx.Exec("INSERT INTO url_records(original_url , short_url, id) VALUES ($1, $2, $3)", v.Original, v.Short, v.ID)
+		_, err = tx.Exec("INSERT INTO url_records(original_url , short_url, id) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING;", v.Original, v.Short, v.ID)
+
 		if err != nil {
 			tx.Rollback()
 			fmt.Println("ROOOOOOOOOOOOOOOOOLBACK!", err.Error())

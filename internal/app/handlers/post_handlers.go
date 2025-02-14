@@ -12,6 +12,8 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type PostHandler struct {
@@ -143,6 +145,15 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 		err := h.storage.WriteAll(records)
 		if err != nil {
 			h.logger.Info(err.Error())
+		}
+
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+				fmt.Println("UniqueViolation")
+				h.logger.Info(err.Error())
+
+			}
 		}
 
 		for _, nr := range records {
