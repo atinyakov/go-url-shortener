@@ -3,18 +3,15 @@ package services
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 type URLResolver struct {
-	storage           storage.StorageI
+	storage           Storage
 	numCharsShortLink int
 	elements          string
 }
 
-func NewURLResolver(numChars int, storage storage.StorageI) (*URLResolver, error) {
+func NewURLResolver(numChars int, storage Storage) (*URLResolver, error) {
 	return &URLResolver{
 		storage:           storage,
 		numCharsShortLink: numChars,
@@ -59,12 +56,8 @@ func (u *URLResolver) LongToShort(url string) string {
 	return u.hashToShort(url)
 }
 
-func (u *URLResolver) ShortToLong(short string) string {
+func (u *URLResolver) ShortToLong(short string) (string, error) {
 	r, err := u.storage.FindByShort(short)
-	if err != nil {
-		fmt.Println("ShortToLong got error", err.Error())
-		return ""
-	}
 
-	return r.Original
+	return r.Original, err
 }

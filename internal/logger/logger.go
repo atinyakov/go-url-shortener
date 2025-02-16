@@ -4,12 +4,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type LoggerI interface {
-	Init(lvl string) error
-	Info(msg string, keysAndValues ...interface{})
-	Error(msg string, keysAndValues ...interface{})
-}
-
 type Logger struct {
 	Log *zap.Logger
 }

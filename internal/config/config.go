@@ -12,14 +12,16 @@ type Options struct {
 	DatabaseDSN    string
 }
 
-func Init() *Options {
-	options := &Options{}
+var options = &Options{}
 
+func init() {
 	flag.StringVar(&options.Port, "a", "localhost:8080", "run on ip:port server")
 	flag.StringVar(&options.ResultHostname, "b", "http://localhost:8080", "result base url")
 	flag.StringVar(&options.FilePath, "f", "", "path to storage file")
 	flag.StringVar(&options.DatabaseDSN, "d", "", "db address")
+}
 
+func Parse() *Options {
 	flag.Parse()
 
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {

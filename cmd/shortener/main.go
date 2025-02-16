@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 
 	"net/http"
@@ -16,14 +15,14 @@ import (
 
 func main() {
 
-	options := config.Init()
+	options := config.Parse()
 
 	hostname := options.Port
 	resultHostname := options.ResultHostname
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
 
-	var s storage.StorageI
+	var s services.Storage
 
 	log := logger.New()
 	err := log.Init("Info")
@@ -35,11 +34,12 @@ func main() {
 		log.Info(fmt.Sprintf("using db %s", dbName))
 		db := repository.InitDB(dbName)
 		defer db.Close()
-		s = repository.CreateURLRepository(db)
+		s = repository.CreateURLRepository(db, log)
+		log.Info("Database connected and table ready.")
 	} else if filePath != "" {
 		log.Info(fmt.Sprintf("using file %s", filePath))
 
-		s, err = storage.NewFileStorage(filePath)
+		s, err = storage.NewFileStorage(filePath, log)
 		if err != nil {
 			panic(err)
 		}
@@ -52,16 +52,13 @@ func main() {
 		}
 	}
 
-	if s == nil {
-		panic(errors.New("NO STORAGE"))
-
-	}
+	URLService := services.NewURLService(s)
 
 	resolver, err := services.NewURLResolver(8, s)
 	if err != nil {
 		panic(err)
 	}
-	r := server.Init(resolver, resultHostname, log, true, s)
+	r := server.Init(resolver, resultHostname, log, true, URLService)
 
 	log.Info(fmt.Sprintf("Server is running on: %s", hostname))
 	err = http.ListenAndServe(hostname, r)

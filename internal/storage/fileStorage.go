@@ -10,14 +10,17 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/atinyakov/go-url-shortener/internal/logger"
 )
 
 type FileStorage struct {
-	file *os.File
-	mu   sync.RWMutex
+	file   *os.File
+	mu     sync.RWMutex
+	logger *logger.Logger
 }
 
-func NewFileStorage(p string) (*FileStorage, error) {
+func NewFileStorage(p string, logger *logger.Logger) (*FileStorage, error) {
 	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
 		return nil, err
 	}
@@ -29,17 +32,18 @@ func NewFileStorage(p string) (*FileStorage, error) {
 	}
 
 	return &FileStorage{
-		file: file,
-		mu:   sync.RWMutex{},
+		file:   file,
+		mu:     sync.RWMutex{},
+		logger: logger,
 	}, nil
 }
 
-func (fs *FileStorage) Write(value URLRecord) error {
+func (fs *FileStorage) Write(value URLRecord) (*URLRecord, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
 	encoder := json.NewEncoder(fs.file)
-	return encoder.Encode(value)
+	return &value, encoder.Encode(value)
 }
 
 func (fs *FileStorage) WriteAll(records []URLRecord) error {
@@ -47,7 +51,7 @@ func (fs *FileStorage) WriteAll(records []URLRecord) error {
 	defer fs.mu.Unlock()
 
 	for _, r := range records {
-		if err := fs.Write(r); err != nil {
+		if _, err := fs.Write(r); err != nil {
 			return err
 		}
 	}
@@ -79,23 +83,23 @@ func (fs *FileStorage) Read() ([]URLRecord, error) {
 	return records, nil
 }
 
-func (fs *FileStorage) FindByShort(s string) (URLRecord, error) {
-	fmt.Println("got short", s)
+func (fs *FileStorage) FindByShort(s string) (*URLRecord, error) {
+
+	fs.logger.Info(fmt.Sprintf("Got short %s", s))
 	records, err := fs.Read()
 	if err != nil {
-		fmt.Println("got error", err.Error())
+		fs.logger.Error(fmt.Sprintf("FindByShort error=%s", err.Error()))
 
-		return URLRecord{}, err
+		return nil, err
 	}
 
-	fmt.Println("got records", records)
 	for _, r := range records {
 		if r.Short == s {
-			return r, nil
+			return &r, nil
 		}
 	}
 
-	return URLRecord{}, nil
+	return nil, errors.New("not found")
 }
 
 func (fs *FileStorage) FindByID(id string) (URLRecord, error) {

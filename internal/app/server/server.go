@@ -7,15 +7,14 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, st storage.StorageI) *chi.Mux {
+func Init(resolver *services.URLResolver, baseURL string, logger *logger.Logger, withGzip bool, sv *services.URLService) *chi.Mux {
 
-	getHandler := handlers.NewGetHandler(resolver, st, logger)
-	postHandler := handlers.NewPostHandler(resolver, baseURL, st, logger)
+	getHandler := handlers.NewGetHandler(resolver, sv, logger)
+	postHandler := handlers.NewPostHandler(resolver, baseURL, sv, logger)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))

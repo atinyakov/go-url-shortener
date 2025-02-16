@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -36,56 +39,69 @@ func InitDB(ps string) *sql.DB {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Database connected and table ready.")
 	return db
 }
 
 type URLRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *logger.Logger
 }
 
-func CreateURLRepository(db *sql.DB) *URLRepository {
+func CreateURLRepository(db *sql.DB, l *logger.Logger) *URLRepository {
 	return &URLRepository{
-		db: db,
+		db:     db,
+		logger: l,
 	}
 }
 
-func (r *URLRepository) Write(v storage.URLRecord) error {
-	res, err := r.db.Exec(
-		"INSERT INTO url_records(original_url, short_url) VALUES ($1, $2) ON CONFLICT (original_url) DO NOTHING;",
+func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
+	var existing storage.URLRecord
+
+	err := r.db.QueryRow(
+		`INSERT INTO url_records(original_url, short_url) 
+		 VALUES ($1, $2) 
+		 ON CONFLICT (original_url) DO NOTHING 
+		 RETURNING original_url, short_url, id;`,
 		v.Original, v.Short,
-	)
+	).Scan(&existing.Original, &existing.Short, &existing.ID)
 
 	if err != nil {
-		fmt.Println("Write error:", err.Error())
-		return err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrConflict
+		}
+		r.logger.Log.Error(fmt.Sprintf("Write error=%s, while INSERT %s", err.Error(), v))
+		return nil, err
 	}
 
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return ErrConflict
-	}
-
-	fmt.Println("Insert successful!")
-	return nil
+	r.logger.Info("Insert successful!")
+	return &existing, nil
 }
 
 func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
+
 	if err != nil {
 		return err
 	}
 
 	for _, v := range rs {
-		_, err = tx.Exec("INSERT INTO url_records(original_url , short_url, id) VALUES ($1, $2, $3);", v.Original, v.Short, v.ID)
+		_, err = tx.Exec(
+			`INSERT INTO url_records(original_url, short_url, id) 
+			 VALUES ($1, $2, $3) 
+			 ON CONFLICT (original_url) DO NOTHING;`,
+			v.Original, v.Short, v.ID,
+		)
 
 		if err != nil {
+
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+				tx.Rollback()
+				return ErrConflict
+			}
+
 			tx.Rollback()
-			fmt.Println("ROLBACK!", err.Error())
+			r.logger.Error(fmt.Sprintf("ROLLBACK with error=%s", err.Error()))
 			return err
 		}
 	}
@@ -114,8 +130,7 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 		records = append(records, r)
 	}
 
-	err = rows.Err()
-	if err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -123,25 +138,40 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 
 }
 
-func (r *URLRepository) FindByShort(s string) (storage.URLRecord, error) {
+func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
 	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", s)
 
 	var id, originalURL, shortURL string
 
 	err := row.Scan(&id, &originalURL, &shortURL)
 	if err != nil {
-		fmt.Println("FindByShort", err.Error())
-		return storage.URLRecord{}, nil
+		r.logger.Log.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
+		return nil, err
 	}
 
-	res := storage.URLRecord{
+	return &storage.URLRecord{
 		ID:       id,
 		Original: originalURL,
 		Short:    shortURL,
+	}, nil
+}
+
+func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
+	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", long)
+
+	var id, originalURL, shortURL string
+
+	err := row.Scan(&id, &originalURL, &shortURL)
+	if err != nil {
+		r.logger.Log.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
+		return nil, err
 	}
 
-	return res, nil
-
+	return &storage.URLRecord{
+		ID:       id,
+		Original: originalURL,
+		Short:    shortURL,
+	}, nil
 }
 
 func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
@@ -151,7 +181,7 @@ func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 
 	err := row.Scan(&id, &original, &short)
 	if err != nil {
-		fmt.Println("FindByID:", err.Error())
+		r.logger.Error(fmt.Sprintf("FindByID error=%s", err.Error()))
 		return storage.URLRecord{}, nil
 	}
 
@@ -160,7 +190,6 @@ func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 		Original: original,
 		Short:    short,
 	}, nil
-
 }
 
 func (r *URLRepository) PingContext(c context.Context) error {

@@ -2,25 +2,25 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/services"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
 
 type GetHandler struct {
 	Resolver *services.URLResolver
-	storage  storage.StorageI
-	logger   logger.LoggerI
+	service  *services.URLService
+	logger   *logger.Logger
 }
 
-func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.LoggerI) *GetHandler {
+func NewGetHandler(resolver *services.URLResolver, s *services.URLService, l *logger.Logger) *GetHandler {
 	return &GetHandler{
 		Resolver: resolver,
-		storage:  s,
+		service:  s,
 		logger:   l,
 	}
 }
@@ -28,23 +28,25 @@ func NewGetHandler(resolver *services.URLResolver, s storage.StorageI, l logger.
 // HandleGet handles GET requests for URL resolution
 func (h *GetHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
 	shortURL := chi.URLParam(req, "url")
+	h.logger.Info(fmt.Sprintf("Got URL from request params: %s", shortURL))
 
-	longURL := h.Resolver.ShortToLong(shortURL)
-	if longURL == "" {
+	r, err := h.service.GetURLByShort(shortURL)
+	if err != nil {
 		http.Error(res, "URL not found", http.StatusNotFound)
 		return
 	}
 
-	res.Header().Set("Location", longURL)
+	res.Header().Set("Location", r.Original)
 
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func (h *GetHandler) HandlePing(res http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 	defer cancel()
-	if err := h.storage.PingContext(ctx); err != nil {
+	if err := h.service.PingContext(ctx); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	res.WriteHeader(http.StatusOK)

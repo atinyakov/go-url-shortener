@@ -3,18 +3,18 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
+	"sync"
 )
 
 type MemoryStorage struct {
-	ltos map[string]string
 	stol map[string]string
+	mu   sync.RWMutex
 }
 
 func CreateMemoryStorage() (*MemoryStorage, error) {
 	return &MemoryStorage{
-		ltos: make(map[string]string),
 		stol: make(map[string]string),
+		mu:   sync.RWMutex{},
 	}, nil
 }
 
@@ -22,18 +22,18 @@ func (m *MemoryStorage) Read() ([]URLRecord, error) {
 	return make([]URLRecord, 0), nil
 }
 
-func (m *MemoryStorage) Write(record URLRecord) error {
+func (m *MemoryStorage) Write(record URLRecord) (*URLRecord, error) {
 	long := record.Original
 	short := record.Short
-
-	m.ltos[long] = short
+	m.mu.Lock()
 	m.stol[short] = long
-	return nil
+	m.mu.Unlock()
+	return &record, nil
 }
 
 func (m *MemoryStorage) WriteAll(records []URLRecord) error {
 	for _, r := range records {
-		e := m.Write(r)
+		_, e := m.Write(r)
 		if e != nil {
 			return e
 		}
@@ -41,15 +41,14 @@ func (m *MemoryStorage) WriteAll(records []URLRecord) error {
 	return nil
 }
 
-func (m *MemoryStorage) FindByShort(short string) (URLRecord, error) {
-	fmt.Println(m.stol)
+func (m *MemoryStorage) FindByShort(short string) (*URLRecord, error) {
 	if long, exists := m.stol[short]; exists {
-		return URLRecord{
+		return &URLRecord{
 			Short:    short,
 			Original: long,
 		}, nil
 	}
-	return URLRecord{}, nil
+	return nil, errors.New("not found")
 }
 
 func (m *MemoryStorage) PingContext(c context.Context) error {
