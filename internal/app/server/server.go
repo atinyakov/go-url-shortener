@@ -11,10 +11,10 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-func Init(resolver *services.URLResolver, baseURL string, logger *logger.Logger, withGzip bool, sv *services.URLService) *chi.Mux {
+func Init(baseURL string, logger *logger.Logger, withGzip bool, sv *services.URLService) *chi.Mux {
 
-	getHandler := handlers.NewGetHandler(resolver, sv, logger)
-	postHandler := handlers.NewPostHandler(resolver, baseURL, sv, logger)
+	getHandler := handlers.NewGetHandler(sv, logger)
+	postHandler := handlers.NewPostHandler(baseURL, sv, logger)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))

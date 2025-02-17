@@ -12,16 +12,14 @@ import (
 )
 
 type GetHandler struct {
-	Resolver *services.URLResolver
-	service  *services.URLService
-	logger   *logger.Logger
+	service *services.URLService
+	logger  *logger.Logger
 }
 
-func NewGetHandler(resolver *services.URLResolver, s *services.URLService, l *logger.Logger) *GetHandler {
+func NewGetHandler(s *services.URLService, l *logger.Logger) *GetHandler {
 	return &GetHandler{
-		Resolver: resolver,
-		service:  s,
-		logger:   l,
+		service: s,
+		logger:  l,
 	}
 }
 

@@ -52,13 +52,12 @@ func main() {
 		}
 	}
 
-	URLService := services.NewURLService(s)
-
 	resolver, err := services.NewURLResolver(8, s)
 	if err != nil {
 		panic(err)
 	}
-	r := server.Init(resolver, resultHostname, log, true, URLService)
+	URLService := services.NewURLService(s, resolver, resultHostname)
+	r := server.Init(resultHostname, log, true, URLService)
 
 	log.Info(fmt.Sprintf("Server is running on: %s", hostname))
 	err = http.ListenAndServe(hostname, r)

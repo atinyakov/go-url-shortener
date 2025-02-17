@@ -12,19 +12,16 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 type PostHandler struct {
-	Resolver   *services.URLResolver
 	baseURL    string
 	urlService *services.URLService
 	logger     *logger.Logger
 }
 
-func NewPostHandler(resolver *services.URLResolver, baseURL string, s *services.URLService, l *logger.Logger) *PostHandler {
+func NewPostHandler(baseURL string, s *services.URLService, l *logger.Logger) *PostHandler {
 	return &PostHandler{
-		Resolver:   resolver,
 		baseURL:    baseURL,
 		urlService: s,
 		logger:     l,
@@ -48,15 +45,13 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	shortURL := h.Resolver.LongToShort(originalURL)
-
-	r, err := h.urlService.CreateURLRecord(storage.URLRecord{Short: shortURL, Original: originalURL})
+	r, err := h.urlService.CreateURLRecord(originalURL)
 
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			h.logger.Info(fmt.Sprintf("URL for %s already exists", originalURL))
 			res.WriteHeader(http.StatusConflict)
-			_, resErr := res.Write([]byte(h.baseURL + "/" + shortURL))
+			_, resErr := res.Write([]byte(h.baseURL + "/" + r.Short))
 			if resErr != nil {
 				res.WriteHeader(http.StatusInternalServerError)
 			}
@@ -94,15 +89,13 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	shortURL := h.Resolver.LongToShort(request.URL)
-
-	_, err = h.urlService.CreateURLRecord(storage.URLRecord{Short: shortURL, Original: request.URL})
+	r, err := h.urlService.CreateURLRecord(request.URL)
 
 	res.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			h.logger.Info(fmt.Sprintf("URL %s already exists", request.URL))
-			response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
+			response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + r.Short})
 			res.WriteHeader(http.StatusConflict)
 			_, writeErr := res.Write(response)
 			if writeErr != nil {
@@ -119,7 +112,7 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 
 	res.WriteHeader(http.StatusCreated)
 
-	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + shortURL})
+	response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + r.Short})
 	_, writeErr := res.Write(response)
 	if writeErr != nil {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -142,36 +135,20 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var resultNew []models.BatchResponse
-
-	if len(urlsR) != 0 {
-		var records = make([]storage.URLRecord, 0)
-
-		for _, url := range urlsR {
-			short := h.Resolver.LongToShort(url.OriginalURL)
-
-			records = append(records, storage.URLRecord{Original: url.OriginalURL, ID: url.CorrelationID, Short: short})
-		}
-
-		err := h.urlService.CreateURLRecords(records)
-		if errors.Is(err, repository.ErrConflict) {
-			h.logger.Info(err.Error())
-			res.WriteHeader(http.StatusConflict)
-			return
-		}
-
-		if err != nil {
-			h.logger.Info(err.Error())
-			res.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		for _, nr := range records {
-			resultNew = append(resultNew, models.BatchResponse{CorrelationID: nr.ID, ShortURL: h.baseURL + "/" + nr.Short})
-		}
+	batchUrls, err := h.urlService.CreateURLRecords(urlsR)
+	if errors.Is(err, repository.ErrConflict) {
+		h.logger.Info(err.Error())
+		res.WriteHeader(http.StatusConflict)
+		return
 	}
 
-	response, err := json.Marshal(resultNew)
+	if err != nil {
+		h.logger.Info(err.Error())
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(&batchUrls)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}

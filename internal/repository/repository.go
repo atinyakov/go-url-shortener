@@ -55,7 +55,7 @@ func CreateURLRepository(db *sql.DB, l *logger.Logger) *URLRepository {
 }
 
 func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
-	var existing storage.URLRecord
+	var existing = v
 
 	err := r.db.QueryRow(
 		`INSERT INTO url_records(original_url, short_url) 
@@ -67,7 +67,7 @@ func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrConflict
+			return &existing, ErrConflict
 		}
 		r.logger.Log.Error(fmt.Sprintf("Write error=%s, while INSERT %s", err.Error(), v))
 		return nil, err

@@ -86,7 +86,7 @@ func TestPostHandlers(t *testing.T) {
 	var mockStorage, _ = storage.CreateMemoryStorage()
 
 	var resolver, _ = services.NewURLResolver(8, mockStorage)
-	var URLService = services.NewURLService(mockStorage)
+	var URLService = services.NewURLService(mockStorage, resolver, "http://localhost:8080")
 	err := log.Init("Info")
 	require.NoError(t, err)
 
@@ -96,7 +96,7 @@ func TestPostHandlers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a new HTTP request using http.NewRequest
-			ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, URLService))
+			ts := httptest.NewServer(server.Init("http://localhost:8080", log, false, URLService))
 			defer ts.Close()
 
 			req, err := http.NewRequest(test.request.method, ts.URL+test.request.url, strings.NewReader(test.request.body))
@@ -186,7 +186,7 @@ func TestGetHandlers(t *testing.T) {
 	var mockStorage, _ = storage.CreateMemoryStorage()
 
 	var resolver, _ = services.NewURLResolver(8, mockStorage)
-	var URLService = services.NewURLService(mockStorage)
+	var URLService = services.NewURLService(mockStorage, resolver, "http://localhost:8080")
 
 	err := log.Init("Info")
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestGetHandlers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a new HTTP request using http.NewRequest
-			ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, URLService))
+			ts := httptest.NewServer(server.Init("http://localhost:8080", log, false, URLService))
 			defer ts.Close()
 
 			t.Logf("Requesting URL: %s", ts.URL+test.request.url)
