@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -13,7 +13,7 @@ type URLService struct {
 	baseURL    string
 }
 
-func NewURLService(repo Storage, resolver *URLResolver, baseURL string) *URLService {
+func NewURL(repo Storage, resolver *URLResolver, baseURL string) *URLService {
 	return &URLService{
 		repository: repo,
 		resolver:   resolver,

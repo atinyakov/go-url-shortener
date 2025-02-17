@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"encoding/json"
@@ -8,19 +8,19 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
-	"github.com/atinyakov/go-url-shortener/internal/logger"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
+	"go.uber.org/zap"
 )
 
 type PostHandler struct {
 	baseURL    string
-	urlService *services.URLService
-	logger     *logger.Logger
+	urlService *service.URLService
+	logger     *zap.Logger
 }
 
-func NewPostHandler(baseURL string, s *services.URLService, l *logger.Logger) *PostHandler {
+func NewPost(baseURL string, s *service.URLService, l *zap.Logger) *PostHandler {
 	return &PostHandler{
 		baseURL:    baseURL,
 		urlService: s,

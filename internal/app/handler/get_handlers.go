@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"context"
@@ -6,17 +6,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
-	"github.com/atinyakov/go-url-shortener/internal/logger"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 type GetHandler struct {
-	service *services.URLService
-	logger  *logger.Logger
+	service *service.URLService
+	logger  *zap.Logger
 }
 
-func NewGetHandler(s *services.URLService, l *logger.Logger) *GetHandler {
+func NewGet(s *service.URLService, l *zap.Logger) *GetHandler {
 	return &GetHandler{
 		service: s,
 		logger:  l,

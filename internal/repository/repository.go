@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 )
 
 var ErrConflict = errors.New("data conflict")
@@ -44,10 +44,10 @@ func InitDB(ps string) *sql.DB {
 
 type URLRepository struct {
 	db     *sql.DB
-	logger *logger.Logger
+	logger *zap.Logger
 }
 
-func CreateURLRepository(db *sql.DB, l *logger.Logger) *URLRepository {
+func CreateURLRepository(db *sql.DB, l *zap.Logger) *URLRepository {
 	return &URLRepository{
 		db:     db,
 		logger: l,
@@ -69,7 +69,7 @@ func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &existing, ErrConflict
 		}
-		r.logger.Log.Error(fmt.Sprintf("Write error=%s, while INSERT %s", err.Error(), v))
+		r.logger.Error(fmt.Sprintf("Write error=%s, while INSERT %s", err.Error(), v))
 		return nil, err
 	}
 
@@ -152,7 +152,7 @@ func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
 
 	err := row.Scan(&id, &originalURL, &shortURL)
 	if err != nil {
-		r.logger.Log.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
+		r.logger.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
 		return nil, err
 	}
 
@@ -170,7 +170,7 @@ func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
 
 	err := row.Scan(&id, &originalURL, &shortURL)
 	if err != nil {
-		r.logger.Log.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
+		r.logger.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
 		return nil, err
 	}
 

@@ -3,18 +3,18 @@ package server
 import (
 	"net/http"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/handlers"
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
-	"github.com/atinyakov/go-url-shortener/internal/logger"
+	"github.com/atinyakov/go-url-shortener/internal/app/handler"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 )
 
-func Init(baseURL string, logger *logger.Logger, withGzip bool, sv *services.URLService) *chi.Mux {
+func Init(baseURL string, logger *zap.Logger, withGzip bool, sv *service.URLService) *chi.Mux {
 
-	getHandler := handlers.NewGetHandler(sv, logger)
-	postHandler := handlers.NewPostHandler(baseURL, sv, logger)
+	getHandler := handler.NewGet(sv, logger)
+	postHandler := handler.NewPost(baseURL, sv, logger)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))

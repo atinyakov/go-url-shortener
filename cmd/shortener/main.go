@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/config"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
@@ -22,10 +22,10 @@ func main() {
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
 
-	var s services.Storage
+	var s service.Storage
 
 	log := logger.New()
-	err := log.Init("Info")
+	err := logger.Init("Info")
 	if err != nil {
 		panic(err)
 	}
@@ -52,11 +52,11 @@ func main() {
 		}
 	}
 
-	resolver, err := services.NewURLResolver(8, s)
+	resolver, err := service.NewURLResolver(8, s)
 	if err != nil {
 		panic(err)
 	}
-	URLService := services.NewURLService(s, resolver, resultHostname)
+	URLService := service.NewURL(s, resolver, resultHostname)
 	r := server.Init(resultHostname, log, true, URLService)
 
 	log.Info(fmt.Sprintf("Server is running on: %s", hostname))

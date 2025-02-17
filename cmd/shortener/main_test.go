@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
@@ -85,9 +85,9 @@ func TestPostHandlers(t *testing.T) {
 	}
 	var mockStorage, _ = storage.CreateMemoryStorage()
 
-	var resolver, _ = services.NewURLResolver(8, mockStorage)
-	var URLService = services.NewURLService(mockStorage, resolver, "http://localhost:8080")
-	err := log.Init("Info")
+	var resolver, _ = service.NewURLResolver(8, mockStorage)
+	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
+	err := logger.Init("Info")
 	require.NoError(t, err)
 
 	t.Parallel()
@@ -185,10 +185,10 @@ func TestGetHandlers(t *testing.T) {
 	}
 	var mockStorage, _ = storage.CreateMemoryStorage()
 
-	var resolver, _ = services.NewURLResolver(8, mockStorage)
-	var URLService = services.NewURLService(mockStorage, resolver, "http://localhost:8080")
+	var resolver, _ = service.NewURLResolver(8, mockStorage)
+	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
 
-	err := log.Init("Info")
+	err := logger.Init("Info")
 	require.NoError(t, err)
 	_, _ = mockStorage.Write(storage.URLRecord{Original: "https://practicum.yandex.ru/", Short: "5Ol0CyIn"})
 

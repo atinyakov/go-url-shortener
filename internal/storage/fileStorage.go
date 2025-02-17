@@ -11,16 +11,16 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/atinyakov/go-url-shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 type FileStorage struct {
 	file   *os.File
 	mu     sync.RWMutex
-	logger *logger.Logger
+	logger *zap.Logger
 }
 
-func NewFileStorage(p string, logger *logger.Logger) (*FileStorage, error) {
+func NewFileStorage(p string, logger *zap.Logger) (*FileStorage, error) {
 	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
 		return nil, err
 	}
