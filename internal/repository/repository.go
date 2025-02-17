@@ -85,12 +85,19 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	}
 
 	for _, v := range rs {
-		_, err = tx.Exec(
-			`INSERT INTO url_records(original_url, short_url, id) 
-			 VALUES ($1, $2, $3) 
-			 ON CONFLICT (original_url) DO NOTHING;`,
-			v.Original, v.Short, v.ID,
-		)
+		stmt, err := tx.Prepare(`
+			INSERT INTO url_records(original_url, short_url, id) 
+			VALUES ($1, $2, $3) 
+			ON CONFLICT (original_url) DO NOTHING 
+			RETURNING original_url, short_url, id;
+		`)
+		if err != nil {
+			return err
+		}
+
+		defer stmt.Close()
+
+		_, err = stmt.Exec(v.Original, v.Short, v.ID)
 
 		if err != nil {
 
