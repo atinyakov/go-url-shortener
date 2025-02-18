@@ -12,26 +12,29 @@ import (
 )
 
 func Init(baseURL string, logger *zap.Logger, withGzip bool, sv *service.URLService) *chi.Mux {
+	authService := service.NewAuth(sv)
 
-	getHandler := handler.NewGet(sv, logger)
-	postHandler := handler.NewPost(baseURL, sv, logger)
+	get := handler.NewGet(sv, logger, authService)
+	post := handler.NewPost(baseURL, sv, logger, authService)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))
 	r.Use(middleware.WithRequestLogging(logger))
+	r.Use(middleware.WithJWT(service.NewAuth(sv)))
 
 	if withGzip {
 		r.Use(middleware.WithGZIPPost)
 		r.Use(middleware.WithGZIPGet)
 	}
 
-	r.Post("/", postHandler.HandlePostPlainBody)
-	r.Get("/{url}", getHandler.HandleGet)
-	r.Get("/ping", getHandler.HandlePing)
+	r.Post("/", post.PlainBody)
+	r.Get("/{url}", get.ByShort)
+	r.Get("/ping", get.PingDB)
+	r.Get("/api/user/urls", get.URLsByUserID)
 
 	r.Route("/api/shorten", func(r chi.Router) {
-		r.Post("/", postHandler.HandlePostJSON)
-		r.Post("/batch", postHandler.HandleBatch)
+		r.Post("/", post.HandlePostJSON)
+		r.Post("/batch", post.HandleBatch)
 	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {

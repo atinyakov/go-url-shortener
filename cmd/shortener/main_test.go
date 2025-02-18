@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var log = logger.New()
-
 func TestPostHandlers(t *testing.T) {
 
 	req, _ := json.Marshal(models.Request{URL: "https://practicum.yandex.ru/"})
@@ -88,8 +86,8 @@ func TestPostHandlers(t *testing.T) {
 	var resolver, _ = service.NewURLResolver(8, mockStorage)
 	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
 	log := logger.New()
-	zapLogger := log.Log
 	err := log.Init("Info")
+	zapLogger := log.Log
 	require.NoError(t, err)
 
 	t.Parallel()
