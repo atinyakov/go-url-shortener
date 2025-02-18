@@ -11,6 +11,7 @@ type Storage interface {
 	WriteAll([]storage.URLRecord) error
 	Read() ([]storage.URLRecord, error)
 	FindByShort(string) (*storage.URLRecord, error)
+	FindByUserID(string) (*[]storage.URLRecord, error)
 	PingContext(context.Context) error
 	FindByID(string) (storage.URLRecord, error)
 }

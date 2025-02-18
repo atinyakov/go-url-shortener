@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
+	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -13,17 +15,19 @@ import (
 type GetHandler struct {
 	service *service.URLService
 	logger  *zap.Logger
+	auth    *service.Auth
 }
 
-func NewGet(s *service.URLService, l *zap.Logger) *GetHandler {
+func NewGet(s *service.URLService, l *zap.Logger, auth *service.Auth) *GetHandler {
 	return &GetHandler{
 		service: s,
 		logger:  l,
+		auth:    auth,
 	}
 }
 
-// HandleGet handles GET requests for URL resolution
-func (h *GetHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
+// ByShort handles GET requests for URL resolution
+func (h *GetHandler) ByShort(res http.ResponseWriter, req *http.Request) {
 	shortURL := chi.URLParam(req, "url")
 	h.logger.Info("Got URL from request params:", zap.String("shortURL", shortURL))
 
@@ -38,7 +42,7 @@ func (h *GetHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h *GetHandler) HandlePing(res http.ResponseWriter, req *http.Request) {
+func (h *GetHandler) PingDB(res http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 	defer cancel()
 	if err := h.service.PingContext(ctx); err != nil {
@@ -47,4 +51,37 @@ func (h *GetHandler) HandlePing(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.WriteHeader(http.StatusOK)
+}
+
+func (h *GetHandler) URLsByUserID(res http.ResponseWriter, req *http.Request) {
+
+	userID := req.Context().Value(middleware.UserIDKey).(string)
+	if userID == "" {
+		http.Error(res, "", http.StatusUnauthorized)
+		return
+	}
+
+	urls, err := h.service.GetURLByUserID(userID)
+
+	if err != nil {
+		http.Error(res, "URL not found", http.StatusNotFound)
+		return
+	}
+
+	if len(*urls) == 0 {
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	response, err := json.Marshal(*urls)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+
+	res.WriteHeader(http.StatusOK)
+
+	_, writeErr := res.Write(response)
+	if writeErr != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
 }

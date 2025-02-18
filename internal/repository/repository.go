@@ -31,12 +31,17 @@ func InitDB(ps string) *sql.DB {
 		CREATE TABLE IF NOT EXISTS url_records (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 		original_url TEXT UNIQUE NOT NULL,
-		short_url TEXT UNIQUE NOT NULL
-	);`
+		short_url TEXT UNIQUE NOT NULL,
+		user_id UUID);`
 
 	_, err = db.Exec(createTable)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	_, err = db.Exec("CREATE INDEX IF NOT EXISTS created_by ON url_records (user_id)")
+	if err != nil {
+		panic(err)
 	}
 
 	return db
@@ -58,12 +63,12 @@ func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
 	var existing = v
 
 	err := r.db.QueryRow(
-		`INSERT INTO url_records(original_url, short_url) 
+		`INSERT INTO url_records(original_url, short_url, id, user_id) 
 		 VALUES ($1, $2) 
 		 ON CONFLICT (original_url) DO NOTHING 
-		 RETURNING original_url, short_url, id;`,
+		 RETURNING original_url, short_url, id, user_id;`,
 		v.Original, v.Short,
-	).Scan(&existing.Original, &existing.Short, &existing.ID)
+	).Scan(&existing.Original, &existing.Short, &existing.ID, &existing.UserID)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -92,10 +97,10 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 
 	for _, v := range rs {
 		stmt, err := tx.Prepare(`
-			INSERT INTO url_records(original_url, short_url, id) 
-			VALUES ($1, $2, $3) 
+			INSERT INTO url_records(original_url, short_url, id, user_id) 
+			VALUES ($1, $2, $3, $4) 
 			ON CONFLICT (original_url) DO NOTHING 
-			RETURNING original_url, short_url, id;
+			RETURNING original_url, short_url, id, user_id;
 		`)
 		if err != nil {
 			return err
@@ -103,7 +108,7 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 
 		defer stmt.Close()
 
-		_, err = stmt.Exec(v.Original, v.Short, v.ID)
+		_, err = stmt.Exec(v.Original, v.Short, v.ID, v.UserID)
 
 		if err != nil {
 			var pgErr *pgconn.PgError
@@ -130,7 +135,7 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 
 	for rows.Next() {
 		var r storage.URLRecord
-		err = rows.Scan(&r.ID, &r.Original, &r.Short)
+		err = rows.Scan(&r.ID, &r.Original, &r.Short, &r.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -149,9 +154,9 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
 	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", s)
 
-	var id, originalURL, shortURL string
+	var id, originalURL, shortURL, userID string
 
-	err := row.Scan(&id, &originalURL, &shortURL)
+	err := row.Scan(&id, &originalURL, &shortURL, &userID)
 	if err != nil {
 		r.logger.Error("FindByShort err=", zap.String("error", err.Error()))
 		return nil, err
@@ -161,15 +166,16 @@ func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
 		ID:       id,
 		Original: originalURL,
 		Short:    shortURL,
+		UserID:   userID,
 	}, nil
 }
 
 func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
 	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", long)
 
-	var id, originalURL, shortURL string
+	var id, originalURL, shortURL, userID string
 
-	err := row.Scan(&id, &originalURL, &shortURL)
+	err := row.Scan(&id, &originalURL, &shortURL, &userID)
 	if err != nil {
 		r.logger.Error("FindByShort err=", zap.String("error", err.Error()))
 		return nil, err
@@ -179,15 +185,16 @@ func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
 		ID:       id,
 		Original: originalURL,
 		Short:    shortURL,
+		UserID:   userID,
 	}, nil
 }
 
 func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 	row := r.db.QueryRow("SELECT * FROM url_records WHERE id = $1;", s)
 
-	var id, original, short string
+	var id, original, short, userID string
 
-	err := row.Scan(&id, &original, &short)
+	err := row.Scan(&id, &original, &short, &userID)
 	if err != nil {
 		r.logger.Error("FindByID error=", zap.String("error", err.Error()))
 		return storage.URLRecord{}, nil
@@ -197,7 +204,36 @@ func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 		ID:       id,
 		Original: original,
 		Short:    short,
+		UserID:   userID,
 	}, nil
+}
+
+func (r *URLRepository) FindByUserID(userID string) (*[]storage.URLRecord, error) {
+	rows, err := r.db.Query("SELECT * FROM url_records WHERE user_id = $1;", userID)
+	if err != nil {
+		r.logger.Error(fmt.Sprintf("FindByUserID error=%s", err.Error()))
+		return &[]storage.URLRecord{}, nil
+	}
+	defer rows.Close()
+
+	res := make([]storage.URLRecord, 0)
+
+	for rows.Next() {
+		var id, original, short, userID string
+		err := rows.Scan(&id, &original, &short, &userID)
+		if err != nil {
+			r.logger.Error(fmt.Sprintf("FindByUserID error=%s", err.Error()))
+			return nil, nil
+		}
+
+		res = append(res, storage.URLRecord{ID: id, Original: original, Short: short, UserID: userID})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
 }
 
 func (r *URLRepository) PingContext(c context.Context) error {
