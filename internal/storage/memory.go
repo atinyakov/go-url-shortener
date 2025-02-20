@@ -7,14 +7,16 @@ import (
 )
 
 type MemoryStorage struct {
-	stol map[string]string
-	mu   sync.RWMutex
+	stol  map[string]string
+	idtol map[string][]URLRecord
+	mu    sync.RWMutex
 }
 
 func CreateMemoryStorage() (*MemoryStorage, error) {
 	return &MemoryStorage{
-		stol: make(map[string]string),
-		mu:   sync.RWMutex{},
+		stol:  make(map[string]string),
+		idtol: make(map[string][]URLRecord),
+		mu:    sync.RWMutex{},
 	}, nil
 }
 
@@ -26,6 +28,7 @@ func (m *MemoryStorage) Write(record URLRecord) (*URLRecord, error) {
 	long := record.Original
 	short := record.Short
 	m.mu.Lock()
+	m.idtol[record.UserID] = append(m.idtol[record.UserID], record)
 	m.stol[short] = long
 	m.mu.Unlock()
 	return &record, nil
@@ -53,6 +56,13 @@ func (m *MemoryStorage) FindByShort(short string) (*URLRecord, error) {
 
 func (m *MemoryStorage) PingContext(c context.Context) error {
 	return errors.ErrUnsupported
+}
+
+func (m *MemoryStorage) FindByUserID(id string) (*[]URLRecord, error) {
+	if items, exists := m.idtol[id]; exists {
+		return &items, nil
+	}
+	return nil, nil
 }
 
 func (m *MemoryStorage) FindByID(id string) (URLRecord, error) {

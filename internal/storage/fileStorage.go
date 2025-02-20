@@ -117,6 +117,23 @@ func (fs *FileStorage) FindByID(id string) (URLRecord, error) {
 	return URLRecord{}, nil
 }
 
+func (fs *FileStorage) FindByUserID(userID string) (*[]URLRecord, error) {
+	records, err := fs.Read()
+	res := make([]URLRecord, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range records {
+		if r.UserID == userID {
+			res = append(res, r)
+		}
+	}
+
+	return &res, nil
+}
+
 func (fs *FileStorage) Close() error {
 	if fs.file != nil {
 		return fs.file.Close()

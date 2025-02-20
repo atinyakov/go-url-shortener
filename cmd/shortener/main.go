@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
@@ -31,9 +32,11 @@ func main() {
 	}
 
 	if dbName != "" {
-		zapLogger.Info("using db", zap.String("dbName", dbName))
+		zapLogger.Info(fmt.Sprintf("using db %s", dbName))
 		db := repository.InitDB(dbName)
 		defer db.Close()
+		s = repository.CreateURLRepository(db, zapLogger)
+		zapLogger.Info("Database connected and table ready.")
 		s = repository.CreateURLRepository(db, zapLogger)
 		zapLogger.Info("Database connected and table ready.")
 	} else if filePath != "" {
