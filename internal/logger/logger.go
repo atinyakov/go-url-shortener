@@ -4,11 +4,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type LoggerI interface {
-	Info(msg string, keysAndValues ...interface{})
-	Init(lvl string) error
-}
-
 type Logger struct {
 	Log *zap.Logger
 }
@@ -37,16 +32,4 @@ func (l *Logger) Init(level string) error {
 	// устанавливаем синглтон
 	l.Log = zl
 	return nil
-}
-
-func (l *Logger) Info(msg string, keysAndValues ...interface{}) {
-	sugar := l.Log.Sugar()
-
-	sugar.WithOptions(zap.AddCallerSkip(1)).Infow(msg, keysAndValues...)
-}
-
-func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
-	sugar := l.Log.Sugar()
-
-	sugar.WithOptions(zap.AddCallerSkip(1)).Errorw(msg, keysAndValues...)
 }

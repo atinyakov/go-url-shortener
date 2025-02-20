@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/atinyakov/go-url-shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 type (
@@ -34,7 +34,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode // захватываем код статуса
 }
 
-func WithRequestLogging(log logger.LoggerI) func(http.Handler) http.Handler {
+func WithRequestLogging(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -55,12 +55,11 @@ func WithRequestLogging(log logger.LoggerI) func(http.Handler) http.Handler {
 			duration := time.Since(start)
 
 			log.Info("HTTP Request",
-				"method", r.Method,
-				"url", r.URL.String(),
-				"duration", time.Since(start),
-				"status", responseData.status,
-				"duration", duration,
-				"size", responseData.size,
+				zap.String("method", r.Method),
+				zap.String("url", r.URL.String()),
+				zap.Duration("duration", duration),
+				zap.Int("status", responseData.status),
+				zap.Int("size", responseData.size),
 			)
 
 		})

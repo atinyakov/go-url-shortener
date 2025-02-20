@@ -3,19 +3,18 @@ package server
 import (
 	"net/http"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/handlers"
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
-	"github.com/atinyakov/go-url-shortener/internal/logger"
+	"github.com/atinyakov/go-url-shortener/internal/app/handler"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 )
 
-func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI, withGzip bool, fs storage.StorageI) *chi.Mux {
+func Init(baseURL string, logger *zap.Logger, withGzip bool, sv *service.URLService) *chi.Mux {
 
-	getHandler := handlers.NewGetHandler(resolver, fs, logger)
-	postHandler := handlers.NewPostHandler(resolver, baseURL, fs, logger)
+	getHandler := handler.NewGet(sv, logger)
+	postHandler := handler.NewPost(baseURL, sv, logger)
 
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.AllowContentType("text/plain", "application/json", "text/html", "application/x-gzip"))
@@ -27,8 +26,13 @@ func Init(resolver *services.URLResolver, baseURL string, logger logger.LoggerI,
 	}
 
 	r.Post("/", postHandler.HandlePostPlainBody)
-	r.Post("/api/shorten", postHandler.HandlePostJSON)
 	r.Get("/{url}", getHandler.HandleGet)
+	r.Get("/ping", getHandler.HandlePing)
+
+	r.Route("/api/shorten", func(r chi.Router) {
+		r.Post("/", postHandler.HandlePostJSON)
+		r.Post("/batch", postHandler.HandleBatch)
+	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Short URL is required", http.StatusBadRequest)

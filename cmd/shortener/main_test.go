@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
-	"github.com/atinyakov/go-url-shortener/internal/app/services"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
@@ -18,22 +18,6 @@ import (
 )
 
 var log = logger.New()
-
-type TestStorage struct {
-}
-
-func (t TestStorage) Write(value storage.URLRecord) error {
-	return nil
-}
-
-func (t TestStorage) Read() ([]storage.URLRecord, error) {
-	var records []storage.URLRecord
-	return records, nil
-}
-
-var mockStorage = &TestStorage{}
-
-var resolver, _ = services.NewURLResolver(8, mockStorage)
 
 func TestPostHandlers(t *testing.T) {
 
@@ -99,16 +83,24 @@ func TestPostHandlers(t *testing.T) {
 			},
 		},
 	}
+	var mockStorage, _ = storage.CreateMemoryStorage()
+
+	var resolver, _ = service.NewURLResolver(8, mockStorage)
+	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
+	log := logger.New()
+	zapLogger := log.Log
 	err := log.Init("Info")
 	require.NoError(t, err)
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage))
-	defer ts.Close()
+	t.Parallel()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a new HTTP request using http.NewRequest
-			// if()
+			ts := httptest.NewServer(server.Init("http://localhost:8080", zapLogger, false, URLService))
+			defer ts.Close()
+
 			req, err := http.NewRequest(test.request.method, ts.URL+test.request.url, strings.NewReader(test.request.body))
 			req.Header.Set("Content-Type", test.request.contentType)
 			require.NoError(t, err)
@@ -193,15 +185,25 @@ func TestGetHandlers(t *testing.T) {
 			},
 		},
 	}
+	var mockStorage, _ = storage.CreateMemoryStorage()
+
+	var resolver, _ = service.NewURLResolver(8, mockStorage)
+	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
+
+	log := logger.New()
 	err := log.Init("Info")
+	zapLogger := log.Log
 	require.NoError(t, err)
+	_, _ = mockStorage.Write(storage.URLRecord{Original: "https://practicum.yandex.ru/", Short: "5Ol0CyIn"})
 
-	ts := httptest.NewServer(server.Init(resolver, "http://localhost:8080", log, false, mockStorage))
-	defer ts.Close()
-
+	t.Parallel()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a new HTTP request using http.NewRequest
+			ts := httptest.NewServer(server.Init("http://localhost:8080", zapLogger, false, URLService))
+			defer ts.Close()
+
 			t.Logf("Requesting URL: %s", ts.URL+test.request.url)
 			req, err := http.NewRequest(test.request.method, ts.URL+test.request.url, nil)
 			require.NoError(t, err)
