@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"net/http"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
@@ -11,6 +9,7 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -25,26 +24,27 @@ func main() {
 	var s service.Storage
 
 	log := logger.New()
-	err := logger.Init("Info")
+	err := log.Init("Info")
+	zapLogger := log.Log
 	if err != nil {
 		panic(err)
 	}
 
 	if dbName != "" {
-		log.Info(fmt.Sprintf("using db %s", dbName))
+		zapLogger.Info("using db", zap.String("dbName", dbName))
 		db := repository.InitDB(dbName)
 		defer db.Close()
-		s = repository.CreateURLRepository(db, log)
-		log.Info("Database connected and table ready.")
+		s = repository.CreateURLRepository(db, zapLogger)
+		zapLogger.Info("Database connected and table ready.")
 	} else if filePath != "" {
-		log.Info(fmt.Sprintf("using file %s", filePath))
+		zapLogger.Info("using file", zap.String("filePath", filePath))
 
-		s, err = storage.NewFileStorage(filePath, log)
+		s, err = storage.NewFileStorage(filePath, zapLogger)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		log.Info("using in memory storage")
+		zapLogger.Info("using in memory storage")
 
 		s, err = storage.CreateMemoryStorage()
 		if err != nil {
@@ -57,9 +57,9 @@ func main() {
 		panic(err)
 	}
 	URLService := service.NewURL(s, resolver, resultHostname)
-	r := server.Init(resultHostname, log, true, URLService)
+	r := server.Init(resultHostname, zapLogger, true, URLService)
 
-	log.Info(fmt.Sprintf("Server is running on: %s", hostname))
+	zapLogger.Info("Server is running", zap.String("hostname", hostname))
 	err = http.ListenAndServe(hostname, r)
 	if err != nil {
 		panic(err)

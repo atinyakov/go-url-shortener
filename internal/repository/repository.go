@@ -69,7 +69,7 @@ func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &existing, ErrConflict
 		}
-		r.logger.Error(fmt.Sprintf("Write error=%s, while INSERT %s", err.Error(), v))
+		r.logger.Error("Write error=, while INSERT", zap.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -79,10 +79,16 @@ func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
 
 func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
-
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
 	}
+
+	defer func() {
+		err := tx.Rollback()
+		if err != nil {
+			r.logger.Error("ROLLBACK error=", zap.String("error", err.Error()))
+		}
+	}()
 
 	for _, v := range rs {
 		stmt, err := tx.Prepare(`
@@ -100,15 +106,10 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 		_, err = stmt.Exec(v.Original, v.Short, v.ID)
 
 		if err != nil {
-
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-				tx.Rollback()
 				return ErrConflict
 			}
-
-			tx.Rollback()
-			r.logger.Error(fmt.Sprintf("ROLLBACK with error=%s", err.Error()))
 			return err
 		}
 	}
@@ -152,7 +153,7 @@ func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
 
 	err := row.Scan(&id, &originalURL, &shortURL)
 	if err != nil {
-		r.logger.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
+		r.logger.Error("FindByShort err=", zap.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -170,7 +171,7 @@ func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
 
 	err := row.Scan(&id, &originalURL, &shortURL)
 	if err != nil {
-		r.logger.Error(fmt.Sprintf("FindByShort err=%s", err.Error()))
+		r.logger.Error("FindByShort err=", zap.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -188,7 +189,7 @@ func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 
 	err := row.Scan(&id, &original, &short)
 	if err != nil {
-		r.logger.Error(fmt.Sprintf("FindByID error=%s", err.Error()))
+		r.logger.Error("FindByID error=", zap.String("error", err.Error()))
 		return storage.URLRecord{}, nil
 	}
 

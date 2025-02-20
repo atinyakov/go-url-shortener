@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -26,7 +25,7 @@ func NewGet(s *service.URLService, l *zap.Logger) *GetHandler {
 // HandleGet handles GET requests for URL resolution
 func (h *GetHandler) HandleGet(res http.ResponseWriter, req *http.Request) {
 	shortURL := chi.URLParam(req, "url")
-	h.logger.Info(fmt.Sprintf("Got URL from request params: %s", shortURL))
+	h.logger.Info("Got URL from request params:", zap.String("shortURL", shortURL))
 
 	r, err := h.service.GetURLByShort(shortURL)
 	if err != nil {

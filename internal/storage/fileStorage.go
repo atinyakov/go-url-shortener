@@ -85,10 +85,10 @@ func (fs *FileStorage) Read() ([]URLRecord, error) {
 
 func (fs *FileStorage) FindByShort(s string) (*URLRecord, error) {
 
-	fs.logger.Info(fmt.Sprintf("Got short %s", s))
+	fs.logger.Info("Got short:", zap.String("shortUrl", s))
 	records, err := fs.Read()
 	if err != nil {
-		fs.logger.Error(fmt.Sprintf("FindByShort error=%s", err.Error()))
+		fs.logger.Error("FindByShort error=", zap.String("error", err.Error()))
 
 		return nil, err
 	}

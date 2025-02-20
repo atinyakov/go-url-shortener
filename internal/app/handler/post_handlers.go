@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -49,7 +48,7 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			h.logger.Info(fmt.Sprintf("URL for %s already exists", originalURL))
+			h.logger.Info("URL already exists", zap.String("originalURL", originalURL))
 			res.WriteHeader(http.StatusConflict)
 			_, resErr := res.Write([]byte(h.baseURL + "/" + r.Short))
 			if resErr != nil {
@@ -58,7 +57,7 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 			return
 		}
 
-		h.logger.Info(fmt.Sprintf("unable to insert row: %s", err.Error()))
+		h.logger.Info("unable to insert row:", zap.String("error", err.Error()))
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -82,10 +81,11 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 		var mr *malformedRequest
 		if errors.As(err, &mr) {
 			http.Error(res, mr.msg, mr.status)
-		} else {
-			log.Print(err.Error())
-			http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
+		log.Print(err.Error())
+		http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
 		return
 	}
 
@@ -94,18 +94,19 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 	res.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			h.logger.Info(fmt.Sprintf("URL %s already exists", request.URL))
+			h.logger.Info("URL already exists", zap.String("originalURL", request.URL))
+
 			response, _ := json.Marshal(models.Response{Result: h.baseURL + "/" + r.Short})
 			res.WriteHeader(http.StatusConflict)
 			_, writeErr := res.Write(response)
 			if writeErr != nil {
 				res.WriteHeader(http.StatusInternalServerError)
+				return
 			}
-
 			return
 		}
 
-		h.logger.Info(fmt.Sprintf("unable to insert row: %s", err.Error()))
+		h.logger.Info("unable to insert row:", zap.String("error", err.Error()))
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -129,9 +130,9 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, mr.msg, mr.status)
 			return
 		}
-
 		log.Print(err.Error())
 		http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
 		return
 	}
 

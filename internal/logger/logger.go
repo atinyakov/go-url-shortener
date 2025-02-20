@@ -4,13 +4,17 @@ import (
 	"go.uber.org/zap"
 )
 
-var Logger *zap.Logger
-
-func New() *zap.Logger {
-	return zap.NewNop()
+type Logger struct {
+	Log *zap.Logger
 }
 
-func Init(level string) error {
+func New() *Logger {
+	return &Logger{
+		Log: zap.NewNop(),
+	}
+}
+
+func (l *Logger) Init(level string) error {
 	// преобразуем текстовый уровень логирования в zap.AtomicLevel
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -26,6 +30,6 @@ func Init(level string) error {
 		return err
 	}
 	// устанавливаем синглтон
-	Logger = zl
+	l.Log = zl
 	return nil
 }
