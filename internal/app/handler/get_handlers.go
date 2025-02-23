@@ -15,14 +15,12 @@ import (
 type GetHandler struct {
 	service *service.URLService
 	logger  *zap.Logger
-	auth    *service.Auth
 }
 
-func NewGet(s *service.URLService, l *zap.Logger, auth *service.Auth) *GetHandler {
+func NewGet(s *service.URLService, l *zap.Logger) *GetHandler {
 	return &GetHandler{
 		service: s,
 		logger:  l,
-		auth:    auth,
 	}
 }
 
@@ -35,6 +33,10 @@ func (h *GetHandler) ByShort(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, "URL not found", http.StatusNotFound)
 		return
+	}
+
+	if r.IsDeleted {
+		res.WriteHeader(http.StatusGone)
 	}
 
 	res.Header().Set("Location", r.Original)

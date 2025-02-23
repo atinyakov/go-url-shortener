@@ -32,6 +32,7 @@ func InitDB(ps string) *sql.DB {
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 		original_url TEXT UNIQUE NOT NULL,
 		short_url TEXT UNIQUE NOT NULL,
+		is_deleted BOOLEAN DEFAULT FALSE,
 		user_id UUID);`
 
 	_, err = db.Exec(createTable)
@@ -152,40 +153,81 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 }
 
 func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
-	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", s)
+	row := r.db.QueryRow(`SELECT id, original_url, short_url, user_id, is_deleted 
+	FROM url_records WHERE short_url = $1;`, s)
 
 	var id, originalURL, shortURL, userID string
+	var IsDeleted bool
 
-	err := row.Scan(&id, &originalURL, &shortURL, &userID)
+	err := row.Scan(&id, &originalURL, &shortURL, &userID, &IsDeleted)
 	if err != nil {
 		r.logger.Error("FindByShort err=", zap.String("error", err.Error()))
 		return nil, err
 	}
 
 	return &storage.URLRecord{
-		ID:       id,
-		Original: originalURL,
-		Short:    shortURL,
-		UserID:   userID,
+		ID:        id,
+		Original:  originalURL,
+		Short:     shortURL,
+		UserID:    userID,
+		IsDeleted: IsDeleted,
 	}, nil
 }
 
+func (r *URLRepository) DeleteBatch(rs []storage.URLRecord) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+
+	defer func() {
+		err := tx.Rollback()
+		if err != nil {
+			r.logger.Error("ROLLBACK error=", zap.String("error", err.Error()))
+		}
+	}()
+
+	for _, v := range rs {
+		stmt, err := tx.Prepare(`
+			UPDATE url_records 
+			SET is_deleted = TRUE 
+			WHERE short_url = $1 AND user_id = $2
+		`)
+		if err != nil {
+			return err
+		}
+
+		defer stmt.Close()
+
+		_, err = stmt.Exec(v.Short, v.UserID)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
-	row := r.db.QueryRow("SELECT * FROM url_records WHERE short_url = $1;", long)
+	row := r.db.QueryRow(`SELECT id, original_url, short_url, user_id, is_deleted 
+	FROM url_records WHERE short_url = $1;`, long)
 
 	var id, originalURL, shortURL, userID string
+	var IsDeleted bool
 
-	err := row.Scan(&id, &originalURL, &shortURL, &userID)
+	err := row.Scan(&id, &originalURL, &shortURL, &userID, &IsDeleted)
 	if err != nil {
-		r.logger.Error("FindByShort err=", zap.String("error", err.Error()))
+		r.logger.Error("FindByLong err=", zap.String("error", err.Error()))
 		return nil, err
 	}
 
 	return &storage.URLRecord{
-		ID:       id,
-		Original: originalURL,
-		Short:    shortURL,
-		UserID:   userID,
+		ID:        id,
+		Original:  originalURL,
+		Short:     shortURL,
+		UserID:    userID,
+		IsDeleted: IsDeleted,
 	}, nil
 }
 
@@ -209,7 +251,7 @@ func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 }
 
 func (r *URLRepository) FindByUserID(userID string) (*[]storage.URLRecord, error) {
-	rows, err := r.db.Query("SELECT * FROM url_records WHERE user_id = $1;", userID)
+	rows, err := r.db.Query("SELECT id, original_url, short_url, user_id FROM url_records WHERE user_id = $1;", userID)
 	if err != nil {
 		r.logger.Error(fmt.Sprintf("FindByUserID error=%s", err.Error()))
 		return &[]storage.URLRecord{}, nil
@@ -220,6 +262,7 @@ func (r *URLRepository) FindByUserID(userID string) (*[]storage.URLRecord, error
 
 	for rows.Next() {
 		var id, original, short, userID string
+
 		err := rows.Scan(&id, &original, &short, &userID)
 		if err != nil {
 			r.logger.Error(fmt.Sprintf("FindByUserID error=%s", err.Error()))

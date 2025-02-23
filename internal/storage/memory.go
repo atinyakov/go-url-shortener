@@ -54,6 +54,14 @@ func (m *MemoryStorage) FindByShort(short string) (*URLRecord, error) {
 	return nil, errors.New("not found")
 }
 
+func (m *MemoryStorage) DeleteBatch(rs []URLRecord) error {
+	for _, r := range rs {
+		delete(m.idtol, r.ID)
+		delete(m.stol, r.Short)
+	}
+	return nil
+}
+
 func (m *MemoryStorage) PingContext(c context.Context) error {
 	return errors.ErrUnsupported
 }

@@ -10,6 +10,7 @@ type Storage interface {
 	Write(storage.URLRecord) (*storage.URLRecord, error)
 	WriteAll([]storage.URLRecord) error
 	Read() ([]storage.URLRecord, error)
+	DeleteBatch([]storage.URLRecord) error
 	FindByShort(string) (*storage.URLRecord, error)
 	FindByUserID(string) (*[]storage.URLRecord, error)
 	PingContext(context.Context) error

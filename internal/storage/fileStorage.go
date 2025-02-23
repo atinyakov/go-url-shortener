@@ -134,6 +134,25 @@ func (fs *FileStorage) FindByUserID(userID string) (*[]URLRecord, error) {
 	return &res, nil
 }
 
+func (fs *FileStorage) DeleteBatch(rs []URLRecord) error {
+	records, err := fs.Read()
+
+	if err != nil {
+		return err
+	}
+
+	for index, r := range records {
+		for _, url := range rs {
+			if r.Short == url.Short {
+				records = append(records[:index], records[index+1:]...)
+			}
+
+		}
+	}
+
+	return fs.WriteAll(records)
+}
+
 func (fs *FileStorage) Close() error {
 	if fs.file != nil {
 		return fs.file.Close()

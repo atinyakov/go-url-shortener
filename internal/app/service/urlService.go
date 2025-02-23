@@ -31,6 +31,10 @@ func (s *URLService) CreateURLRecord(long string, userID string) (*storage.URLRe
 	return s.repository.Write(storage.URLRecord{Original: long, Short: shortURL, UserID: userID})
 }
 
+func (s *URLService) DeleteURLRecords(rs []storage.URLRecord) error {
+	return s.repository.DeleteBatch(rs)
+}
+
 func (s *URLService) CreateURLRecords(rs []models.BatchRequest, userID string) (*[]models.BatchResponse, error) {
 	var resultNew []models.BatchResponse
 

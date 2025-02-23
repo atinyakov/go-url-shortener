@@ -37,8 +37,6 @@ func main() {
 		defer db.Close()
 		s = repository.CreateURLRepository(db, zapLogger)
 		zapLogger.Info("Database connected and table ready.")
-		s = repository.CreateURLRepository(db, zapLogger)
-		zapLogger.Info("Database connected and table ready.")
 	} else if filePath != "" {
 		zapLogger.Info("using file", zap.String("filePath", filePath))
 

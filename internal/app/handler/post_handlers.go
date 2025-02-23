@@ -18,15 +18,13 @@ type PostHandler struct {
 	baseURL    string
 	urlService *service.URLService
 	logger     *zap.Logger
-	auth       *service.Auth
 }
 
-func NewPost(baseURL string, s *service.URLService, l *zap.Logger, auth *service.Auth) *PostHandler {
+func NewPost(baseURL string, s *service.URLService, l *zap.Logger) *PostHandler {
 	return &PostHandler{
 		baseURL:    baseURL,
 		urlService: s,
 		logger:     l,
-		auth:       auth,
 	}
 }
 
