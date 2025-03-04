@@ -1,52 +1,74 @@
 package worker
 
 import (
+	"context"
 	"time"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"go.uber.org/zap"
 )
 
-type DeleteTaskWorker struct {
-	urlSerice *service.URLService
-	in        <-chan []storage.URLRecord
-	logger    zap.Logger
+type Repo interface {
+	DeleteBatch(context.Context, []storage.URLRecord) error
 }
 
-func NewDeleteRecordWorker(s *service.URLService, logger zap.Logger, ch <-chan []storage.URLRecord) *DeleteTaskWorker {
+type DeleteTaskWorker struct {
+	in     chan storage.URLRecord
+	logger *zap.Logger
+	repo   Repo
+}
+
+func NewDeleteRecordWorker(logger *zap.Logger, repo Repo) *DeleteTaskWorker {
+	ch := make(chan storage.URLRecord)
+
 	return &DeleteTaskWorker{
-		urlSerice: s,
-		in:        ch,
-		logger:    logger,
+		in:     ch,
+		logger: logger,
+		repo:   repo,
 	}
+}
+
+func (s *DeleteTaskWorker) GetInChannel() chan<- storage.URLRecord {
+	s.logger.Info("get in channle")
+
+	return s.in
 }
 
 func (s *DeleteTaskWorker) FlushRecords() {
 	// будем сохранять сообщения, накопленные за последние 100 секунд
+	s.logger.Info("Fluching records init")
 	ticker := time.NewTicker(10 * time.Second)
-
 	var messages []storage.URLRecord
+
+	sendMessages := func() {
+		s.logger.Info("Fluching delete records", zap.Int("count=", len(messages)))
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		err := s.repo.DeleteBatch(ctx, messages)
+
+		if err != nil {
+			s.logger.Error("Cannot delete records", zap.Error(err))
+			messages = messages[:0]
+
+			return
+		}
+		// сотрём успешно отосланные сообщения
+		messages = messages[:0]
+	}
 
 	for {
 		select {
-		case msgs := <-s.in:
-			s.logger.Info("Got Records to delete", zap.Any("msg", msgs))
-			messages = append(messages, msgs...)
+		case msg := <-s.in:
+			s.logger.Info("Got Records to delete", zap.Any("msg", msg))
+			messages = append(messages, msg)
+			if len(messages) > 25 {
+				sendMessages()
+			}
 		case <-ticker.C:
 			if len(messages) == 0 {
 				continue
 			}
-
-			s.logger.Info("Fluching delete records", zap.Int("count=", len(messages)))
-			err := s.urlSerice.DeleteURLRecords(messages)
-			if err != nil {
-				s.logger.Error("Cannot delete records", zap.Error(err))
-				// не будем стирать сообщения, попробуем отправить их чуть позже
-				continue
-			}
-			// сотрём успешно отосланные сообщения
-			messages = nil
+			sendMessages()
 		}
 	}
 }

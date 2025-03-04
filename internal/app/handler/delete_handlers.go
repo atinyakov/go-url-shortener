@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
@@ -13,18 +15,19 @@ import (
 type DeleteHandler struct {
 	service *service.URLService
 	logger  *zap.Logger
-	ch      chan<- []storage.URLRecord
 }
 
-func NewDelete(s *service.URLService, l *zap.Logger, ch chan<- []storage.URLRecord) *DeleteHandler {
+func NewDelete(s *service.URLService, l *zap.Logger) *DeleteHandler {
 	return &DeleteHandler{
 		service: s,
 		logger:  l,
-		ch:      ch,
 	}
 }
 
 func (h *DeleteHandler) DeleteBatch(res http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
+
 	userID := req.Context().Value(middleware.UserIDKey).(string)
 	if userID == "" {
 		http.Error(res, "", http.StatusUnauthorized)
@@ -47,10 +50,11 @@ func (h *DeleteHandler) DeleteBatch(res http.ResponseWriter, req *http.Request) 
 	}
 
 	var toDelete []storage.URLRecord
-	for _, shortURL := range request {
-		toDelete = append(toDelete, storage.URLRecord{Short: shortURL, UserID: userID})
+	for _, url := range request {
+		toDelete = append(toDelete, storage.URLRecord{Short: url, UserID: userID})
 	}
-	h.ch <- toDelete
+
+	go h.service.DeleteURLRecords(ctx, toDelete)
 
 	res.WriteHeader(http.StatusAccepted)
 }

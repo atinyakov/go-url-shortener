@@ -26,10 +26,13 @@ func NewGet(s *service.URLService, l *zap.Logger) *GetHandler {
 
 // ByShort handles GET requests for URL resolution
 func (h *GetHandler) ByShort(res http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
+
 	shortURL := chi.URLParam(req, "url")
 	h.logger.Info("Got URL from request params:", zap.String("shortURL", shortURL))
 
-	r, err := h.service.GetURLByShort(shortURL)
+	r, err := h.service.GetURLByShort(ctx, shortURL)
 	if err != nil {
 		http.Error(res, "URL not found", http.StatusNotFound)
 		return
@@ -56,6 +59,8 @@ func (h *GetHandler) PingDB(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *GetHandler) URLsByUserID(res http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
 
 	userID := req.Context().Value(middleware.UserIDKey).(string)
 	if userID == "" {
@@ -63,7 +68,7 @@ func (h *GetHandler) URLsByUserID(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	urls, err := h.service.GetURLByUserID(userID)
+	urls, err := h.service.GetURLByUserID(ctx, userID)
 
 	if err != nil {
 		http.Error(res, "URL not found", http.StatusNotFound)

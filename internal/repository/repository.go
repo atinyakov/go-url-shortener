@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/jackc/pgerrcode"
@@ -16,14 +15,14 @@ import (
 
 var ErrConflict = errors.New("data conflict")
 
-func InitDB(ps string) *sql.DB {
+func InitDB(ps string, logger *zap.Logger) *sql.DB {
 	db, err := sql.Open("pgx", ps)
 	if err != nil {
-		panic(err)
+		logger.Fatal(err.Error())
 	}
 
 	if err := db.Ping(); err != nil {
-		panic(err)
+		logger.Fatal(err.Error())
 	}
 
 	// Create table if not exists
@@ -37,12 +36,12 @@ func InitDB(ps string) *sql.DB {
 
 	_, err = db.Exec(createTable)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 
 	_, err = db.Exec("CREATE INDEX IF NOT EXISTS created_by ON url_records (user_id)")
 	if err != nil {
-		panic(err)
+		logger.Fatal(err.Error())
 	}
 
 	return db
@@ -60,10 +59,10 @@ func CreateURLRepository(db *sql.DB, l *zap.Logger) *URLRepository {
 	}
 }
 
-func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
+func (r *URLRepository) Write(ctx context.Context, v storage.URLRecord) (*storage.URLRecord, error) {
 	var existing = v
 
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO url_records(original_url, short_url, id, user_id) 
 		 VALUES ($1, $2, COALESCE(NULLIF($3, '')::UUID, gen_random_uuid()), $4)
 		 ON CONFLICT (original_url) DO NOTHING 
@@ -83,7 +82,7 @@ func (r *URLRepository) Write(v storage.URLRecord) (*storage.URLRecord, error) {
 	return &existing, nil
 }
 
-func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
+func (r *URLRepository) WriteAll(ctx context.Context, rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -96,20 +95,20 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 		}
 	}()
 
+	stmt, err := tx.Prepare(`
+		INSERT INTO url_records(original_url, short_url, id, user_id) 
+		VALUES ($1, $2, $3, $4) 
+		ON CONFLICT (original_url) DO NOTHING 
+		RETURNING original_url, short_url, id, user_id;
+	`)
+	if err != nil {
+		return err
+	}
+
 	for _, v := range rs {
-		stmt, err := tx.Prepare(`
-			INSERT INTO url_records(original_url, short_url, id, user_id) 
-			VALUES ($1, $2, $3, $4) 
-			ON CONFLICT (original_url) DO NOTHING 
-			RETURNING original_url, short_url, id, user_id;
-		`)
-		if err != nil {
-			return err
-		}
 
 		defer stmt.Close()
-
-		_, err = stmt.Exec(v.Original, v.Short, v.ID, v.UserID)
+		_, err = stmt.ExecContext(ctx, v.Original, v.Short, v.ID, v.UserID)
 
 		if err != nil {
 			var pgErr *pgconn.PgError
@@ -123,8 +122,8 @@ func (r *URLRepository) WriteAll(rs []storage.URLRecord) error {
 	return tx.Commit()
 }
 
-func (r *URLRepository) Read() ([]storage.URLRecord, error) {
-	rows, err := r.db.Query("SELECT * FROM url_records;")
+func (r *URLRepository) Read(ctx context.Context) ([]storage.URLRecord, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT * FROM url_records;")
 
 	if err != nil {
 		return nil, err
@@ -152,8 +151,8 @@ func (r *URLRepository) Read() ([]storage.URLRecord, error) {
 
 }
 
-func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
-	row := r.db.QueryRow(`SELECT id, original_url, short_url, user_id, is_deleted 
+func (r *URLRepository) FindByShort(ctx context.Context, s string) (*storage.URLRecord, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT id, original_url, short_url, user_id, is_deleted 
 	FROM url_records WHERE short_url = $1;`, s)
 
 	var id, originalURL, shortURL, userID string
@@ -174,7 +173,7 @@ func (r *URLRepository) FindByShort(s string) (*storage.URLRecord, error) {
 	}, nil
 }
 
-func (r *URLRepository) DeleteBatch(rs []storage.URLRecord) error {
+func (r *URLRepository) DeleteBatch(ctx context.Context, rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -187,19 +186,20 @@ func (r *URLRepository) DeleteBatch(rs []storage.URLRecord) error {
 		}
 	}()
 
+	stmt, err := tx.Prepare(`
+		UPDATE url_records 
+		SET is_deleted = TRUE 
+		WHERE short_url = $1 AND user_id = $2
+	`)
+	if err != nil {
+		return err
+	}
+
 	for _, v := range rs {
-		stmt, err := tx.Prepare(`
-			UPDATE url_records 
-			SET is_deleted = TRUE 
-			WHERE short_url = $1 AND user_id = $2
-		`)
-		if err != nil {
-			return err
-		}
 
 		defer stmt.Close()
 
-		_, err = stmt.Exec(v.Short, v.UserID)
+		_, err = stmt.ExecContext(ctx, v.Short, v.UserID)
 
 		if err != nil {
 			return err
@@ -209,8 +209,8 @@ func (r *URLRepository) DeleteBatch(rs []storage.URLRecord) error {
 	return tx.Commit()
 }
 
-func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
-	row := r.db.QueryRow(`SELECT id, original_url, short_url, user_id, is_deleted 
+func (r *URLRepository) FindByLong(ctx context.Context, long string) (*storage.URLRecord, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT id, original_url, short_url, user_id, is_deleted 
 	FROM url_records WHERE short_url = $1;`, long)
 
 	var id, originalURL, shortURL, userID string
@@ -231,8 +231,8 @@ func (r *URLRepository) FindByLong(long string) (*storage.URLRecord, error) {
 	}, nil
 }
 
-func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
-	row := r.db.QueryRow("SELECT * FROM url_records WHERE id = $1;", s)
+func (r *URLRepository) FindByID(ctx context.Context, s string) (storage.URLRecord, error) {
+	row := r.db.QueryRowContext(ctx, "SELECT * FROM url_records WHERE id = $1;", s)
 
 	var id, original, short, userID string
 
@@ -250,8 +250,8 @@ func (r *URLRepository) FindByID(s string) (storage.URLRecord, error) {
 	}, nil
 }
 
-func (r *URLRepository) FindByUserID(userID string) (*[]storage.URLRecord, error) {
-	rows, err := r.db.Query("SELECT id, original_url, short_url, user_id FROM url_records WHERE user_id = $1;", userID)
+func (r *URLRepository) FindByUserID(ctx context.Context, userID string) (*[]storage.URLRecord, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT id, original_url, short_url, user_id FROM url_records WHERE user_id = $1;", userID)
 	if err != nil {
 		r.logger.Error(fmt.Sprintf("FindByUserID error=%s", err.Error()))
 		return &[]storage.URLRecord{}, nil

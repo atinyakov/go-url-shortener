@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
@@ -84,11 +86,11 @@ func TestPostHandlers(t *testing.T) {
 	var mockStorage, _ = storage.CreateMemoryStorage()
 
 	var resolver, _ = service.NewURLResolver(8, mockStorage)
-	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
 	log := logger.New()
 	err := log.Init("Info")
 	zapLogger := log.Log
 	require.NoError(t, err)
+	var URLService = service.NewURL(mockStorage, resolver, zapLogger, "http://localhost:8080")
 
 	t.Parallel()
 
@@ -186,13 +188,16 @@ func TestGetHandlers(t *testing.T) {
 	var mockStorage, _ = storage.CreateMemoryStorage()
 
 	var resolver, _ = service.NewURLResolver(8, mockStorage)
-	var URLService = service.NewURL(mockStorage, resolver, "http://localhost:8080")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
 	log := logger.New()
 	err := log.Init("Info")
 	zapLogger := log.Log
 	require.NoError(t, err)
-	_, _ = mockStorage.Write(storage.URLRecord{Original: "https://practicum.yandex.ru/", Short: "5Ol0CyIn"})
+	var URLService = service.NewURL(mockStorage, resolver, zapLogger, "http://localhost:8080")
+	_, _ = mockStorage.Write(ctx, storage.URLRecord{Original: "https://practicum.yandex.ru/", Short: "5Ol0CyIn"})
 
 	t.Parallel()
 	for _, test := range tests {

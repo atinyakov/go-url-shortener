@@ -38,7 +38,7 @@ func NewFileStorage(p string, logger *zap.Logger) (*FileStorage, error) {
 	}, nil
 }
 
-func (fs *FileStorage) Write(value URLRecord) (*URLRecord, error) {
+func (fs *FileStorage) Write(ctx context.Context, value URLRecord) (*URLRecord, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
@@ -46,19 +46,19 @@ func (fs *FileStorage) Write(value URLRecord) (*URLRecord, error) {
 	return &value, encoder.Encode(value)
 }
 
-func (fs *FileStorage) WriteAll(records []URLRecord) error {
+func (fs *FileStorage) WriteAll(ctx context.Context, records []URLRecord) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
 	for _, r := range records {
-		if _, err := fs.Write(r); err != nil {
+		if _, err := fs.Write(ctx, r); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (fs *FileStorage) Read() ([]URLRecord, error) {
+func (fs *FileStorage) Read(ctx context.Context) ([]URLRecord, error) {
 	// Reset file pointer to the beginning
 	_, err := fs.file.Seek(0, io.SeekStart)
 	if err != nil {
@@ -83,10 +83,10 @@ func (fs *FileStorage) Read() ([]URLRecord, error) {
 	return records, nil
 }
 
-func (fs *FileStorage) FindByShort(s string) (*URLRecord, error) {
+func (fs *FileStorage) FindByShort(ctx context.Context, s string) (*URLRecord, error) {
 
 	fs.logger.Info("Got short:", zap.String("shortUrl", s))
-	records, err := fs.Read()
+	records, err := fs.Read(ctx)
 	if err != nil {
 		fs.logger.Error("FindByShort error=", zap.String("error", err.Error()))
 
@@ -102,8 +102,8 @@ func (fs *FileStorage) FindByShort(s string) (*URLRecord, error) {
 	return nil, errors.New("not found")
 }
 
-func (fs *FileStorage) FindByID(id string) (URLRecord, error) {
-	records, err := fs.Read()
+func (fs *FileStorage) FindByID(ctx context.Context, id string) (URLRecord, error) {
+	records, err := fs.Read(ctx)
 	if err != nil {
 		return URLRecord{}, err
 	}
@@ -117,8 +117,8 @@ func (fs *FileStorage) FindByID(id string) (URLRecord, error) {
 	return URLRecord{}, nil
 }
 
-func (fs *FileStorage) FindByUserID(userID string) (*[]URLRecord, error) {
-	records, err := fs.Read()
+func (fs *FileStorage) FindByUserID(ctx context.Context, userID string) (*[]URLRecord, error) {
+	records, err := fs.Read(ctx)
 	res := make([]URLRecord, 0)
 
 	if err != nil {
@@ -134,23 +134,27 @@ func (fs *FileStorage) FindByUserID(userID string) (*[]URLRecord, error) {
 	return &res, nil
 }
 
-func (fs *FileStorage) DeleteBatch(rs []URLRecord) error {
-	records, err := fs.Read()
-
+func (fs *FileStorage) DeleteBatch(ctx context.Context, rs []URLRecord) error {
+	records, err := fs.Read(ctx)
 	if err != nil {
 		return err
 	}
 
-	for index, r := range records {
-		for _, url := range rs {
-			if r.Short == url.Short {
-				records = append(records[:index], records[index+1:]...)
-			}
+	// Create a map for quick lookup
+	toDelete := make(map[string]struct{})
+	for _, url := range rs {
+		toDelete[url.Short] = struct{}{}
+	}
 
+	// Filter records that should be kept
+	newRecords := records[:0] // Reuse the same slice
+	for _, r := range records {
+		if _, found := toDelete[r.Short]; !found {
+			newRecords = append(newRecords, r)
 		}
 	}
 
-	return fs.WriteAll(records)
+	return fs.WriteAll(ctx, newRecords)
 }
 
 func (fs *FileStorage) Close() error {

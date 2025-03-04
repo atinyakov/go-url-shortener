@@ -7,12 +7,12 @@ import (
 )
 
 type Storage interface {
-	Write(storage.URLRecord) (*storage.URLRecord, error)
-	WriteAll([]storage.URLRecord) error
-	Read() ([]storage.URLRecord, error)
-	DeleteBatch([]storage.URLRecord) error
-	FindByShort(string) (*storage.URLRecord, error)
-	FindByUserID(string) (*[]storage.URLRecord, error)
+	Write(context.Context, storage.URLRecord) (*storage.URLRecord, error)
+	WriteAll(context.Context, []storage.URLRecord) error
+	Read(context.Context) ([]storage.URLRecord, error)
+	DeleteBatch(context.Context, []storage.URLRecord) error
+	FindByShort(context.Context, string) (*storage.URLRecord, error)
+	FindByUserID(context.Context, string) (*[]storage.URLRecord, error)
 	PingContext(context.Context) error
-	FindByID(string) (storage.URLRecord, error)
+	FindByID(context.Context, string) (storage.URLRecord, error)
 }

@@ -6,8 +6,6 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/app/handler"
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
-	"github.com/atinyakov/go-url-shortener/internal/worker"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
@@ -15,13 +13,8 @@ import (
 
 func Init(baseURL string, logger *zap.Logger, withGzip bool, sv *service.URLService) *chi.Mux {
 
-	a := make(chan []storage.URLRecord)
-
-	worker := worker.NewDeleteRecordWorker(sv, *logger, a)
-	go worker.FlushRecords()
-
 	get := handler.NewGet(sv, logger)
-	delete := handler.NewDelete(sv, logger, a)
+	delete := handler.NewDelete(sv, logger)
 	post := handler.NewPost(baseURL, sv, logger)
 
 	r := chi.NewRouter()

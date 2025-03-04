@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 )
@@ -56,8 +57,8 @@ func (u *URLResolver) LongToShort(url string) string {
 	return u.hashToShort(url)
 }
 
-func (u *URLResolver) ShortToLong(short string) (string, error) {
-	r, err := u.storage.FindByShort(short)
+func (u *URLResolver) ShortToLong(ctx context.Context, short string) (string, error) {
+	r, err := u.storage.FindByShort(ctx, short)
 
 	return r.Original, err
 }

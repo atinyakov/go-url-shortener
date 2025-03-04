@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -27,12 +28,14 @@ func NewAuth(s *URLService) *Auth {
 }
 
 func (a Auth) BuildJWTString() (string, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
 	var userID string // Replace with database lookup if user exists
 
 	for {
 		tempID := uuid.New().String()
-		if res, _ := a.s.GetURLByUserID(tempID); len(*res) == 0 {
+		if res, _ := a.s.GetURLByUserID(ctx, tempID); len(*res) == 0 {
 			userID = tempID
 			break
 		}
