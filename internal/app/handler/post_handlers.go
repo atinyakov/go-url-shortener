@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
+	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
 	"go.uber.org/zap"
@@ -27,11 +30,19 @@ func NewPost(baseURL string, s *service.URLService, l *zap.Logger) *PostHandler 
 	}
 }
 
-// HandlePostPlainBody handles POST requests for URL shortening
-func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Request) {
+// PlainBody handles POST requests for URL shortening
+func (h *PostHandler) PlainBody(res http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
+
+	userID, ok := req.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(res, "User ID not found", http.StatusInternalServerError)
+		return
+	}
+
 	body, err := io.ReadAll(req.Body)
 	defer req.Body.Close()
-
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
 		return
@@ -44,7 +55,7 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	r, err := h.urlService.CreateURLRecord(originalURL)
+	r, err := h.urlService.CreateURLRecord(ctx, originalURL, userID)
 
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
@@ -73,7 +84,14 @@ func (h *PostHandler) HandlePostPlainBody(res http.ResponseWriter, req *http.Req
 
 // HandlePostJSON handles POST requests for URL shortening
 func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
 
+	userID, ok := req.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(res, "User ID not found", http.StatusInternalServerError)
+		return
+	}
 	var request models.Request
 
 	err := decodeJSONBody(res, req, &request)
@@ -89,7 +107,7 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	r, err := h.urlService.CreateURLRecord(request.URL)
+	r, err := h.urlService.CreateURLRecord(ctx, request.URL, userID)
 
 	res.Header().Set("Content-Type", "application/json")
 	if err != nil {
@@ -121,6 +139,15 @@ func (h *PostHandler) HandlePostJSON(res http.ResponseWriter, req *http.Request)
 }
 
 func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
+
+	userID, ok := req.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(res, "User ID not found", http.StatusInternalServerError)
+		return
+	}
+
 	var urlsR []models.BatchRequest
 
 	err := decodeJSONBody(res, req, &urlsR)
@@ -136,7 +163,7 @@ func (h *PostHandler) HandleBatch(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	batchUrls, err := h.urlService.CreateURLRecords(urlsR)
+	batchUrls, err := h.urlService.CreateURLRecords(ctx, urlsR, userID)
 	if errors.Is(err, repository.ErrConflict) {
 		h.logger.Info(err.Error())
 		res.WriteHeader(http.StatusConflict)

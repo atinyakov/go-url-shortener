@@ -32,7 +32,7 @@ func main() {
 
 	if dbName != "" {
 		zapLogger.Info("using db", zap.String("dbName", dbName))
-		db := repository.InitDB(dbName)
+		db := repository.InitDB(dbName, zapLogger)
 		defer db.Close()
 		s = repository.CreateURLRepository(db, zapLogger)
 		zapLogger.Info("Database connected and table ready.")
@@ -56,7 +56,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	URLService := service.NewURL(s, resolver, resultHostname)
+
+	URLService := service.NewURL(s, resolver, zapLogger, resultHostname)
 	r := server.Init(resultHostname, zapLogger, true, URLService)
 
 	zapLogger.Info("Server is running", zap.String("hostname", hostname))
