@@ -13,11 +13,11 @@ import (
 )
 
 type DeleteHandler struct {
-	service *service.URLService
+	service service.URLServiceIface
 	logger  *zap.Logger
 }
 
-func NewDelete(s *service.URLService, l *zap.Logger) *DeleteHandler {
+func NewDelete(s service.URLServiceIface, l *zap.Logger) *DeleteHandler {
 	return &DeleteHandler{
 		service: s,
 		logger:  l,

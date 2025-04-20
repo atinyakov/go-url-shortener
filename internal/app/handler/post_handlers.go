@@ -18,11 +18,11 @@ import (
 
 type PostHandler struct {
 	baseURL    string
-	urlService *service.URLService
+	urlService service.URLServiceIface
 	logger     *zap.Logger
 }
 
-func NewPost(baseURL string, s *service.URLService, l *zap.Logger) *PostHandler {
+func NewPost(baseURL string, s service.URLServiceIface, l *zap.Logger) *PostHandler {
 	return &PostHandler{
 		baseURL:    baseURL,
 		urlService: s,

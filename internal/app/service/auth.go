@@ -18,10 +18,10 @@ const TokenExp = time.Hour * 24 * 365 // 1 year
 const secretKey = "supersecretkey"
 
 type Auth struct {
-	s *URLService
+	s URLServiceIface
 }
 
-func NewAuth(s *URLService) *Auth {
+func NewAuth(s URLServiceIface) *Auth {
 	return &Auth{
 		s: s,
 	}

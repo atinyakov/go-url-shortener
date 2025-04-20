@@ -10,6 +10,8 @@ import (
 	"github.com/atinyakov/go-url-shortener/internal/repository"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"go.uber.org/zap"
+
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -24,10 +26,21 @@ func main() {
 	var s service.Storage
 
 	log := logger.New()
+	defer log.Log.Sync()
+
 	err := log.Init("Info")
 	zapLogger := log.Log
 	if err != nil {
 		panic(err)
+	}
+
+	if options.EnablePprof {
+		go func() {
+			zapLogger.Info("Starting pprof server", zap.String("addr", "localhost:6060"))
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				zapLogger.Error("pprof server error", zap.Error(err))
+			}
+		}()
 	}
 
 	if dbName != "" {

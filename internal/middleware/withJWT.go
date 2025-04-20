@@ -12,6 +12,11 @@ type ContextKey string
 
 const UserIDKey ContextKey = "userID"
 
+func InjectUserID(req *http.Request, userID string) *http.Request {
+	ctx := context.WithValue(req.Context(), UserIDKey, userID)
+	return req.WithContext(ctx)
+}
+
 func WithJWT(auth *service.Auth) func(next http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {

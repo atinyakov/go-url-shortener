@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func Init(baseURL string, logger *zap.Logger, withGzip bool, sv *service.URLService) *chi.Mux {
+func Init(baseURL string, logger *zap.Logger, withGzip bool, sv service.URLServiceIface) *chi.Mux {
 
 	get := handler.NewGet(sv, logger)
 	delete := handler.NewDelete(sv, logger)

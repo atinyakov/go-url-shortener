@@ -13,11 +13,11 @@ import (
 )
 
 type GetHandler struct {
-	service *service.URLService
+	service service.URLServiceIface
 	logger  *zap.Logger
 }
 
-func NewGet(s *service.URLService, l *zap.Logger) *GetHandler {
+func NewGet(s service.URLServiceIface, l *zap.Logger) *GetHandler {
 	return &GetHandler{
 		service: s,
 		logger:  l,
@@ -62,9 +62,10 @@ func (h *GetHandler) URLsByUserID(res http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 	defer cancel()
 
-	userID := req.Context().Value(middleware.UserIDKey).(string)
-	if userID == "" {
-		http.Error(res, "", http.StatusUnauthorized)
+	val := req.Context().Value(middleware.UserIDKey)
+	userID, ok := val.(string)
+	if !ok {
+		http.Error(res, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 

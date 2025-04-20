@@ -10,6 +10,7 @@ type Options struct {
 	ResultHostname string
 	FilePath       string
 	DatabaseDSN    string
+	EnablePprof    bool
 }
 
 var options = &Options{}
@@ -19,6 +20,7 @@ func init() {
 	flag.StringVar(&options.ResultHostname, "b", "http://localhost:8080", "result base url")
 	flag.StringVar(&options.FilePath, "f", "", "path to storage file")
 	flag.StringVar(&options.DatabaseDSN, "d", "", "db address")
+	flag.BoolVar(&options.EnablePprof, "p", false, "enable pprof")
 }
 
 func Parse() *Options {
