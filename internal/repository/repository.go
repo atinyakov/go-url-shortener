@@ -195,10 +195,8 @@ func (r *URLRepository) DeleteBatch(ctx context.Context, rs []storage.URLRecord)
 		return err
 	}
 
+	defer stmt.Close()
 	for _, v := range rs {
-
-		defer stmt.Close()
-
 		_, err = stmt.ExecContext(ctx, v.Short, v.UserID)
 
 		if err != nil {
