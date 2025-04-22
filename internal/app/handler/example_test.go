@@ -122,7 +122,7 @@ func TestURLsByUserID(t *testing.T) {
 	mockService, _ := setupMockGetService(t)
 	h := handler.NewGet(mockService, zap.NewNop())
 
-	urls := []storage.URLRecord{{Short: "short", Original: "original"}}
+	urls := []models.ByIDRequest{{ShortURL: "short", OriginalURL: "original"}}
 	mockService.EXPECT().GetURLByUserID(gomock.Any(), "test-user").Return(&urls, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
@@ -134,10 +134,10 @@ func TestURLsByUserID(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	var result []storage.URLRecord
+	var result []models.ByIDRequest
 	require.NoError(t, json.Unmarshal(body, &result))
 	require.Len(t, result, 1)
-	require.Equal(t, "short", result[0].Short)
+	require.Equal(t, "short", result[0].ShortURL)
 }
 
 // muxRequestWithParam simulates chi's URLParam extraction
