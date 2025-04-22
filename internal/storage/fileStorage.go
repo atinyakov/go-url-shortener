@@ -50,11 +50,25 @@ func (fs *FileStorage) WriteAll(ctx context.Context, records []URLRecord) error 
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
+	if err := fs.file.Truncate(0); err != nil {
+		return fmt.Errorf("failed to truncate file: %w", err)
+	}
+	if _, err := fs.file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek to beginning of file: %w", err)
+	}
+
+	writer := bufio.NewWriter(fs.file)
+
 	for _, r := range records {
-		if _, err := fs.Write(ctx, r); err != nil {
-			return err
+		if err := json.NewEncoder(writer).Encode(r); err != nil {
+			return fmt.Errorf("failed to write record: %w", err)
 		}
 	}
+
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush buffered writer: %w", err)
+	}
+
 	return nil
 }
 
@@ -140,14 +154,12 @@ func (fs *FileStorage) DeleteBatch(ctx context.Context, rs []URLRecord) error {
 		return err
 	}
 
-	// Create a map for quick lookup
-	toDelete := make(map[string]struct{})
+	toDelete := make(map[string]struct{}, len(rs))
 	for _, url := range rs {
 		toDelete[url.Short] = struct{}{}
 	}
 
-	// Filter records that should be kept
-	newRecords := records[:0] // Reuse the same slice
+	newRecords := make([]URLRecord, 0, len(records))
 	for _, r := range records {
 		if _, found := toDelete[r.Short]; !found {
 			newRecords = append(newRecords, r)
