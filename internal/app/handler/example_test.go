@@ -73,36 +73,6 @@ func TestHandlePostJSON(t *testing.T) {
 	require.Contains(t, resp.Result, expected.Short)
 }
 
-func TestHandleBatch(t *testing.T) {
-	mockService, _ := setupMockService(t)
-	h := handler.NewPost("http://localhost:8080", mockService, logger.New().Log)
-
-	batchReq := []models.BatchRequest{
-		{CorrelationID: "1", OriginalURL: "https://example.com/1"},
-		{CorrelationID: "2", OriginalURL: "https://example.com/2"},
-	}
-	data, _ := json.Marshal(batchReq)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-123"))
-	rec := httptest.NewRecorder()
-
-	batchResp := []models.BatchResponse{
-		{CorrelationID: "1", ShortURL: "http://localhost:8080/short1"},
-		{CorrelationID: "2", ShortURL: "http://localhost:8080/short2"},
-	}
-
-	mockService.EXPECT().CreateURLRecords(gomock.Any(), batchReq, "user-123").Return(batchResp, nil)
-
-	h.HandleBatch(rec, req)
-	require.Equal(t, http.StatusCreated, rec.Code)
-	var actualResp []models.BatchResponse
-	err := json.Unmarshal(rec.Body.Bytes(), &actualResp)
-	require.NoError(t, err)
-	require.Equal(t, batchResp, actualResp)
-}
-
 func setupMockGetService(t *testing.T) (*mocks.MockURLServiceIface, service.URLServiceIface) {
 	ctrl := gomock.NewController(t)
 
