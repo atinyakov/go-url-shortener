@@ -1,3 +1,8 @@
+// Package handler contains functions and structures for processing HTTP
+// requests related to URL shortening. It handles decoding JSON bodies,
+// managing errors for malformed requests, and provides functionality
+// for URL shortening operations such as handling POST, GET, and DELETE
+// requests to manage shortened URLs.
 package handler
 
 import (
@@ -9,18 +14,20 @@ import (
 	"strings"
 )
 
+// malformedRequest represents an error with a malformed HTTP request.
 type malformedRequest struct {
-	status int
-	msg    string
+	status int    // HTTP status code for the error
+	msg    string // Error message
 }
 
+// Error returns the error message for a malformed request.
 func (mr *malformedRequest) Error() string {
 	return mr.msg
 }
 
-/*
-NOTE: taken from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
-*/
+// decodeJSONBody decodes a JSON request body into the given destination struct.
+// It reads the content from the request body, checks for proper JSON formatting,
+// and handles common errors related to JSON parsing.
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 	ct := r.Header.Get("Content-Type")
 	if ct != "" {
@@ -31,8 +38,10 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 		}
 	}
 
+	// Limit the size of the request body to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
 
+	// Decode the JSON body into the destination struct
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 
@@ -72,6 +81,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 		}
 	}
 
+	// Ensure the body only contains a single JSON object
 	err = dec.Decode(&struct{}{})
 	if !errors.Is(err, io.EOF) {
 		msg := "Request body must only contain a single JSON object"

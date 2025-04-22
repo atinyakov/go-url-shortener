@@ -1,3 +1,5 @@
+// Package storage provides storage implementations for URL records,
+// including an implementation backed by a local file using JSON encoding.
 package storage
 
 import (
@@ -14,18 +16,21 @@ import (
 	"go.uber.org/zap"
 )
 
+// FileStorage provides a file-based implementation of persistent storage
+// for URL records. Each record is stored as a JSON-encoded line.
 type FileStorage struct {
-	file   *os.File
-	mu     sync.RWMutex
-	logger *zap.Logger
+	file   *os.File     // Underlying file used for storage
+	mu     sync.RWMutex // Mutex to protect concurrent access
+	logger *zap.Logger  // Logger for internal debugging and error tracking
 }
 
+// NewFileStorage creates a new instance of FileStorage using the provided
+// file path and logger. The file will be created if it does not exist.
 func NewFileStorage(p string, logger *zap.Logger) (*FileStorage, error) {
 	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
 		return nil, err
 	}
 
-	// Open the file in read-write mode; create if not exists
 	file, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0660)
 	if err != nil {
 		return nil, err
@@ -38,6 +43,7 @@ func NewFileStorage(p string, logger *zap.Logger) (*FileStorage, error) {
 	}, nil
 }
 
+// Write appends a single URLRecord to the file in JSON format.
 func (fs *FileStorage) Write(ctx context.Context, value URLRecord) (*URLRecord, error) {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
@@ -46,6 +52,8 @@ func (fs *FileStorage) Write(ctx context.Context, value URLRecord) (*URLRecord, 
 	return &value, encoder.Encode(value)
 }
 
+// WriteAll overwrites the file with the provided slice of URLRecords,
+// replacing all existing data.
 func (fs *FileStorage) WriteAll(ctx context.Context, records []URLRecord) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
@@ -72,8 +80,8 @@ func (fs *FileStorage) WriteAll(ctx context.Context, records []URLRecord) error 
 	return nil
 }
 
+// Read parses all records from the file and returns them as a slice.
 func (fs *FileStorage) Read(ctx context.Context) ([]URLRecord, error) {
-	// Reset file pointer to the beginning
 	_, err := fs.file.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
@@ -97,13 +105,12 @@ func (fs *FileStorage) Read(ctx context.Context) ([]URLRecord, error) {
 	return records, nil
 }
 
+// FindByShort searches for a URLRecord by its short URL value.
 func (fs *FileStorage) FindByShort(ctx context.Context, s string) (*URLRecord, error) {
-
 	fs.logger.Info("Got short:", zap.String("shortUrl", s))
 	records, err := fs.Read(ctx)
 	if err != nil {
 		fs.logger.Error("FindByShort error=", zap.String("error", err.Error()))
-
 		return nil, err
 	}
 
@@ -116,6 +123,7 @@ func (fs *FileStorage) FindByShort(ctx context.Context, s string) (*URLRecord, e
 	return nil, errors.New("not found")
 }
 
+// FindByID looks up a URLRecord by its unique ID field.
 func (fs *FileStorage) FindByID(ctx context.Context, id string) (URLRecord, error) {
 	records, err := fs.Read(ctx)
 	if err != nil {
@@ -131,6 +139,7 @@ func (fs *FileStorage) FindByID(ctx context.Context, id string) (URLRecord, erro
 	return URLRecord{}, nil
 }
 
+// FindByUserID retrieves all records associated with a given user ID.
 func (fs *FileStorage) FindByUserID(ctx context.Context, userID string) (*[]URLRecord, error) {
 	records, err := fs.Read(ctx)
 	res := make([]URLRecord, 0)
@@ -148,6 +157,8 @@ func (fs *FileStorage) FindByUserID(ctx context.Context, userID string) (*[]URLR
 	return &res, nil
 }
 
+// DeleteBatch removes all records from the file that match the short URLs
+// of the provided slice of URLRecords.
 func (fs *FileStorage) DeleteBatch(ctx context.Context, rs []URLRecord) error {
 	records, err := fs.Read(ctx)
 	if err != nil {
@@ -169,6 +180,7 @@ func (fs *FileStorage) DeleteBatch(ctx context.Context, rs []URLRecord) error {
 	return fs.WriteAll(ctx, newRecords)
 }
 
+// Close closes the underlying file handle used by FileStorage.
 func (fs *FileStorage) Close() error {
 	if fs.file != nil {
 		return fs.file.Close()
@@ -176,6 +188,8 @@ func (fs *FileStorage) Close() error {
 	return nil
 }
 
+// PingContext returns an error indicating that ping is unsupported
+// in the file-based storage implementation.
 func (fs *FileStorage) PingContext(c context.Context) error {
 	return errors.ErrUnsupported
 }
