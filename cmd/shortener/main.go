@@ -3,13 +3,14 @@ package main
 import (
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/config"
 	"github.com/atinyakov/go-url-shortener/internal/logger"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
-	"go.uber.org/zap"
 
 	_ "net/http/pprof"
 )

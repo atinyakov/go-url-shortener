@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 func TestMemoryStorage_WriteAndFind(t *testing.T) {

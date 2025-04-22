@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/atinyakov/go-url-shortener/internal/models"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/models"
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 func TestURLService_CreateURLRecord(t *testing.T) {

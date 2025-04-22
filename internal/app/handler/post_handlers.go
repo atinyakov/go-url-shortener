@@ -9,11 +9,12 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/repository"
-	"go.uber.org/zap"
 )
 
 type PostHandler struct {

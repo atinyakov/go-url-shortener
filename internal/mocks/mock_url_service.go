@@ -13,9 +13,10 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "go.uber.org/mock/gomock"
+
 	models "github.com/atinyakov/go-url-shortener/internal/models"
 	storage "github.com/atinyakov/go-url-shortener/internal/storage"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockStorage is a mock of Storage interface.

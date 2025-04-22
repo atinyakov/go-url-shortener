@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/atinyakov/go-url-shortener/internal/worker"
-	"go.uber.org/zap"
 )
 
 type URLService struct {

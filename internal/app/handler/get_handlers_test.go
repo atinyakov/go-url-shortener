@@ -7,14 +7,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/atinyakov/go-url-shortener/internal/middleware"
-	"github.com/atinyakov/go-url-shortener/internal/mocks"
-	"github.com/atinyakov/go-url-shortener/internal/models"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/middleware"
+	"github.com/atinyakov/go-url-shortener/internal/mocks"
+	"github.com/atinyakov/go-url-shortener/internal/models"
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 func createTestHandler(mockService *mocks.MockURLServiceIface) *GetHandler {

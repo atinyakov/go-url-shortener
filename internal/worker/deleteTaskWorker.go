@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 type Repo interface {

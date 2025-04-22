@@ -3,12 +3,13 @@ package server
 import (
 	"net/http"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/handler"
-	"github.com/atinyakov/go-url-shortener/internal/app/service"
-	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/app/handler"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
+	"github.com/atinyakov/go-url-shortener/internal/middleware"
 )
 
 func Init(baseURL string, logger *zap.Logger, withGzip bool, sv service.URLServiceIface) *chi.Mux {

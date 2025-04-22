@@ -8,14 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atinyakov/go-url-shortener/internal/middleware"
-	"github.com/atinyakov/go-url-shortener/internal/mocks"
-	"github.com/atinyakov/go-url-shortener/internal/models"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/middleware"
+	"github.com/atinyakov/go-url-shortener/internal/mocks"
+	"github.com/atinyakov/go-url-shortener/internal/models"
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 func newTestPostHandler(t *testing.T) *PostHandler {

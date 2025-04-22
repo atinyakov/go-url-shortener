@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
 // Helper to set up a mock DB and repository

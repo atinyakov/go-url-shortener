@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
-	"go.uber.org/zap"
 )
 
 type DeleteHandler struct {

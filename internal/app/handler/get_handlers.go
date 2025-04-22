@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/atinyakov/go-url-shortener/internal/app/service"
-	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
+	"github.com/atinyakov/go-url-shortener/internal/middleware"
 )
 
 type GetHandler struct {
