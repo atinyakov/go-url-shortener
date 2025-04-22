@@ -99,6 +99,7 @@ func TestByShort(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ByShort(w, req)
 	resp := w.Result()
+	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	require.Equal(t, r.Original, resp.Header.Get("Location"))
@@ -114,6 +115,7 @@ func TestPingDB(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.PingDB(w, req)
 	resp := w.Result()
+	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -131,6 +133,8 @@ func TestURLsByUserID(t *testing.T) {
 
 	h.URLsByUserID(w, req)
 	resp := w.Result()
+	defer resp.Body.Close()
+
 	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
