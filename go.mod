@@ -1,12 +1,11 @@
 module github.com/atinyakov/go-url-shortener
 
-go 1.22
-
-toolchain go1.23.6
+go 1.23.6
 
 require (
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/stretchr/testify v1.10.0
+	go.uber.org/mock v0.5.1
 )
 
 require (
@@ -21,6 +20,7 @@ require (
 )
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0

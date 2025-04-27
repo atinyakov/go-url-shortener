@@ -1,3 +1,6 @@
+// Package repository provides a PostgreSQL-backed implementation of a URL shortener repository.
+// It defines the URLRepository type that enables storing, retrieving, and deleting URL records.
+// Initialization sets up the required database schema and logging is handled via zap.Logger.
 package repository
 
 import (
@@ -6,15 +9,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/atinyakov/go-url-shortener/internal/storage"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+
+	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
+// ErrConflict is returned when a unique constraint conflict occurs
+// during insertion of a URL (duplicate original or short URL).
 var ErrConflict = errors.New("data conflict")
 
+// InitDB initializes a PostgreSQL database connection and ensures that
+// the required `url_records` table and indexes exist.
+// Panics via logger.Fatal if any step fails.
 func InitDB(ps string, logger *zap.Logger) *sql.DB {
 	db, err := sql.Open("pgx", ps)
 	if err != nil {
@@ -25,7 +34,6 @@ func InitDB(ps string, logger *zap.Logger) *sql.DB {
 		logger.Fatal(err.Error())
 	}
 
-	// Create table if not exists
 	createTable := `
 		CREATE TABLE IF NOT EXISTS url_records (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,11 +55,13 @@ func InitDB(ps string, logger *zap.Logger) *sql.DB {
 	return db
 }
 
+// URLRepository implements persistent storage for shortened URLs using a SQL database.
 type URLRepository struct {
 	db     *sql.DB
 	logger *zap.Logger
 }
 
+// CreateURLRepository returns a new instance of URLRepository with the provided database and logger.
 func CreateURLRepository(db *sql.DB, l *zap.Logger) *URLRepository {
 	return &URLRepository{
 		db:     db,
@@ -59,6 +69,8 @@ func CreateURLRepository(db *sql.DB, l *zap.Logger) *URLRepository {
 	}
 }
 
+// Write inserts a new URLRecord into the database.
+// If the original URL already exists, it returns the existing record and ErrConflict.
 func (r *URLRepository) Write(ctx context.Context, v storage.URLRecord) (*storage.URLRecord, error) {
 	var existing = v
 
@@ -82,6 +94,8 @@ func (r *URLRepository) Write(ctx context.Context, v storage.URLRecord) (*storag
 	return &existing, nil
 }
 
+// WriteAll inserts multiple URLRecords within a single transaction.
+// Returns ErrConflict if any record violates a unique constraint.
 func (r *URLRepository) WriteAll(ctx context.Context, rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -106,7 +120,6 @@ func (r *URLRepository) WriteAll(ctx context.Context, rs []storage.URLRecord) er
 	}
 
 	for _, v := range rs {
-
 		defer stmt.Close()
 		_, err = stmt.ExecContext(ctx, v.Original, v.Short, v.ID, v.UserID)
 
@@ -122,13 +135,12 @@ func (r *URLRepository) WriteAll(ctx context.Context, rs []storage.URLRecord) er
 	return tx.Commit()
 }
 
+// Read retrieves all records from the url_records table.
 func (r *URLRepository) Read(ctx context.Context) ([]storage.URLRecord, error) {
 	rows, err := r.db.QueryContext(ctx, "SELECT * FROM url_records;")
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
 	records := make([]storage.URLRecord, 0)
@@ -139,7 +151,6 @@ func (r *URLRepository) Read(ctx context.Context) ([]storage.URLRecord, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		records = append(records, r)
 	}
 
@@ -148,9 +159,9 @@ func (r *URLRepository) Read(ctx context.Context) ([]storage.URLRecord, error) {
 	}
 
 	return records, nil
-
 }
 
+// FindByShort retrieves a URLRecord by its short URL.
 func (r *URLRepository) FindByShort(ctx context.Context, s string) (*storage.URLRecord, error) {
 	row := r.db.QueryRowContext(ctx, `SELECT id, original_url, short_url, user_id, is_deleted 
 	FROM url_records WHERE short_url = $1;`, s)
@@ -173,6 +184,7 @@ func (r *URLRepository) FindByShort(ctx context.Context, s string) (*storage.URL
 	}, nil
 }
 
+// DeleteBatch marks a list of URLRecords as deleted by setting is_deleted = TRUE.
 func (r *URLRepository) DeleteBatch(ctx context.Context, rs []storage.URLRecord) error {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -194,13 +206,10 @@ func (r *URLRepository) DeleteBatch(ctx context.Context, rs []storage.URLRecord)
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	for _, v := range rs {
-
-		defer stmt.Close()
-
 		_, err = stmt.ExecContext(ctx, v.Short, v.UserID)
-
 		if err != nil {
 			return err
 		}
@@ -209,6 +218,8 @@ func (r *URLRepository) DeleteBatch(ctx context.Context, rs []storage.URLRecord)
 	return tx.Commit()
 }
 
+// FindByLong fetches a URLRecord using its long/original URL.
+// NOTE: This method currently uses short_url in WHERE clause, which seems incorrect.
 func (r *URLRepository) FindByLong(ctx context.Context, long string) (*storage.URLRecord, error) {
 	row := r.db.QueryRowContext(ctx, `SELECT id, original_url, short_url, user_id, is_deleted 
 	FROM url_records WHERE short_url = $1;`, long)
@@ -231,6 +242,7 @@ func (r *URLRepository) FindByLong(ctx context.Context, long string) (*storage.U
 	}, nil
 }
 
+// FindByID retrieves a URLRecord by its unique ID.
 func (r *URLRepository) FindByID(ctx context.Context, s string) (storage.URLRecord, error) {
 	row := r.db.QueryRowContext(ctx, "SELECT * FROM url_records WHERE id = $1;", s)
 
@@ -250,6 +262,7 @@ func (r *URLRepository) FindByID(ctx context.Context, s string) (storage.URLReco
 	}, nil
 }
 
+// FindByUserID retrieves all URLRecords created by a specific user.
 func (r *URLRepository) FindByUserID(ctx context.Context, userID string) (*[]storage.URLRecord, error) {
 	rows, err := r.db.QueryContext(ctx, "SELECT id, original_url, short_url, user_id FROM url_records WHERE user_id = $1;", userID)
 	if err != nil {
@@ -279,6 +292,7 @@ func (r *URLRepository) FindByUserID(ctx context.Context, userID string) (*[]sto
 	return &res, nil
 }
 
+// PingContext checks the health of the database connection using the given context.
 func (r *URLRepository) PingContext(c context.Context) error {
 	return r.db.PingContext(c)
 }
