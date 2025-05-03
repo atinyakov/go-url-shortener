@@ -16,9 +16,7 @@ import (
 )
 
 func main() {
-
 	options := config.Parse()
-
 	hostname := options.Port
 	resultHostname := options.ResultHostname
 	filePath := options.FilePath
@@ -27,7 +25,9 @@ func main() {
 	var s service.Storage
 
 	log := logger.New()
-	defer log.Log.Sync()
+	defer func() {
+		_ = log.Log.Sync()
+	}()
 
 	err := log.Init("Info")
 	zapLogger := log.Log
