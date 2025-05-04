@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/handler"
+	"github.com/atinyakov/go-url-shortener/internal/app/service"
 	"github.com/atinyakov/go-url-shortener/internal/middleware"
 	"github.com/atinyakov/go-url-shortener/internal/mocks"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
@@ -35,7 +36,7 @@ func TestDeleteBatch(t *testing.T) {
 	mockService := mocks.NewMockURLServiceIface(ctrl)
 	logger := testLogger()
 
-	handler := handler.NewDelete(mockService, logger)
+	h := handler.NewDelete(mockService, logger)
 
 	t.Run("valid request returns 202", func(t *testing.T) {
 		body := bytes.NewBufferString(`["abc123","def456"]`)
@@ -47,6 +48,13 @@ func TestDeleteBatch(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 
+		// Override callDeleteURLRecords to call the method synchronously for testing
+		original := handler.СallDeleteURLRecords
+		defer func() { handler.СallDeleteURLRecords = original }()
+		handler.СallDeleteURLRecords = func(service service.URLServiceIface, ctx context.Context, records []storage.URLRecord) {
+			service.DeleteURLRecords(ctx, records)
+		}
+
 		mockService.EXPECT().
 			DeleteURLRecords(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, records []storage.URLRecord) error {
@@ -57,7 +65,7 @@ func TestDeleteBatch(t *testing.T) {
 				return nil
 			})
 
-		handler.DeleteBatch(rec, req)
+		h.DeleteBatch(rec, req)
 
 		require.Equal(t, http.StatusAccepted, rec.Code)
 	})
@@ -66,7 +74,7 @@ func TestDeleteBatch(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, "/api/user/urls", nil)
 		rec := httptest.NewRecorder()
 
-		handler.DeleteBatch(rec, req)
+		h.DeleteBatch(rec, req)
 		require.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
@@ -79,7 +87,7 @@ func TestDeleteBatch(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 
-		handler.DeleteBatch(rec, req)
+		h.DeleteBatch(rec, req)
 		require.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -93,7 +101,7 @@ func TestDeleteBatch(t *testing.T) {
 		req = req.WithContext(ctx)
 
 		rec := httptest.NewRecorder()
-		handler.DeleteBatch(rec, req)
+		h.DeleteBatch(rec, req)
 
 		require.Equal(t, http.StatusBadRequest, rec.Code)
 	})

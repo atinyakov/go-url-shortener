@@ -30,7 +30,8 @@ func NewDelete(s service.URLServiceIface, l *zap.Logger) *DeleteHandler {
 	}
 }
 
-func callDeleteURLRecords(service service.URLServiceIface, ctx context.Context, records []storage.URLRecord) {
+// callDeleteURLRecords is separated to allow override in tests.
+var СallDeleteURLRecords = func(service service.URLServiceIface, ctx context.Context, records []storage.URLRecord) {
 	go service.DeleteURLRecords(ctx, records)
 }
 
@@ -72,7 +73,7 @@ func (h *DeleteHandler) DeleteBatch(res http.ResponseWriter, req *http.Request) 
 	}
 
 	// Perform the deletion asynchronously.
-	callDeleteURLRecords(h.service, ctx, toDelete)
+	СallDeleteURLRecords(h.service, ctx, toDelete)
 
 	// Return a 202 Accepted status to acknowledge that the deletion process is started.
 	res.WriteHeader(http.StatusAccepted)
