@@ -49,7 +49,10 @@ func TestWithJWT(t *testing.T) {
 		middleware := WithJWT(mockAuth)(handler)
 		middleware.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, wantUserID, gotUserID)
 
 		cookies := rec.Result().Cookies()
@@ -85,7 +88,10 @@ func TestWithJWT(t *testing.T) {
 		middleware := WithJWT(mockAuth)(handler)
 		middleware.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, userID, gotUserID)
 	})
 
@@ -109,7 +115,10 @@ func TestWithJWT(t *testing.T) {
 		middleware := WithJWT(mockAuth)(handler)
 		middleware.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rec.Result().StatusCode)
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 
 	t.Run("token parse error", func(t *testing.T) {
@@ -127,6 +136,9 @@ func TestWithJWT(t *testing.T) {
 		req.AddCookie(mockCookie)
 		rec := httptest.NewRecorder()
 
+		resp := rec.Result()
+		defer resp.Body.Close()
+
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Fatal("handler should not be called on error")
 		})
@@ -134,6 +146,6 @@ func TestWithJWT(t *testing.T) {
 		middleware := WithJWT(mockAuth)(handler)
 		middleware.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rec.Result().StatusCode)
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 }

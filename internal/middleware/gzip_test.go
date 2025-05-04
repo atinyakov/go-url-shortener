@@ -35,6 +35,7 @@ func TestWithGZIPGet(t *testing.T) {
 			rec := httptest.NewRecorder()
 			WithGZIPGet(handler).ServeHTTP(rec, req)
 			resp := rec.Result()
+			defer resp.Body.Close()
 
 			// Check if GZIP header is set
 			encoding := resp.Header.Get("Content-Encoding")
@@ -92,9 +93,13 @@ func TestWithGZIPPost(t *testing.T) {
 		})
 
 		WithGZIPPost(handler).ServeHTTP(rec, req)
-		if rec.Result().StatusCode != http.StatusOK {
-			t.Errorf("expected 200 OK, got %d", rec.Result().StatusCode)
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("expected 200 OK, got %d", resp.StatusCode)
 		}
+
 	})
 
 	t.Run("invalid gzip request", func(t *testing.T) {
@@ -108,6 +113,7 @@ func TestWithGZIPPost(t *testing.T) {
 
 		WithGZIPPost(handler).ServeHTTP(rec, req)
 		resp := rec.Result()
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Errorf("expected 400 BadRequest, got %d", resp.StatusCode)
 		}
