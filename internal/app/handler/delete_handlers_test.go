@@ -49,8 +49,8 @@ func TestDeleteBatch(t *testing.T) {
 
 		mockService.EXPECT().
 			DeleteURLRecords(gomock.Any(), []storage.URLRecord{
-				{Short: "abc123", UserID: "user-1"},
-				{Short: "def456", UserID: "user-1"},
+				{Short: "abc123", UserID: "user-1", IsDeleted: false},
+				{Short: "def456", UserID: "user-1", IsDeleted: false},
 			})
 
 		handler.DeleteBatch(rec, req)
