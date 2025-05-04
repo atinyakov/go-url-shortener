@@ -55,7 +55,7 @@ func TestWithJWT(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, wantUserID, gotUserID)
 
-		cookies := rec.Result().Cookies()
+		cookies := resp.Cookies()
 		require.Len(t, cookies, 1)
 		assert.Equal(t, "token", cookies[0].Name)
 		assert.Equal(t, wantToken, cookies[0].Value)
@@ -120,7 +120,6 @@ func TestWithJWT(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
-
 	t.Run("token parse error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -136,9 +135,6 @@ func TestWithJWT(t *testing.T) {
 		req.AddCookie(mockCookie)
 		rec := httptest.NewRecorder()
 
-		resp := rec.Result()
-		defer resp.Body.Close()
-
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Fatal("handler should not be called on error")
 		})
@@ -146,6 +142,6 @@ func TestWithJWT(t *testing.T) {
 		middleware := WithJWT(mockAuth)(handler)
 		middleware.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
