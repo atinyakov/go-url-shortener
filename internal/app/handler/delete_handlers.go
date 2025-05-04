@@ -1,3 +1,5 @@
+//go:build !test
+
 // Package handler provides HTTP handlers for managing URL deletion operations.
 package handler
 
