@@ -28,7 +28,7 @@ func InjectUserID(req *http.Request, userID string) *http.Request {
 // WithJWT is an HTTP middleware that checks for a valid JWT in the request's cookies.
 // If the JWT is missing or invalid, a new one is generated and sent to the client.
 // It also injects the user ID from the JWT claims into the request context.
-func WithJWT(auth *service.Auth) func(next http.Handler) http.Handler {
+func WithJWT(auth service.AuthIface) func(next http.Handler) http.Handler {
 	// Returns a handler that processes the JWT and sets the user ID in the context.
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
