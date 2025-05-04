@@ -37,8 +37,9 @@ func (h *DeleteHandler) DeleteBatch(res http.ResponseWriter, req *http.Request) 
 	defer cancel()
 
 	// Extract the user ID from the request context.
-	userID := req.Context().Value(middleware.UserIDKey).(string)
-	if userID == "" {
+	val := req.Context().Value(middleware.UserIDKey)
+	userID, ok := val.(string)
+	if !ok || userID == "" {
 		http.Error(res, "", http.StatusUnauthorized)
 		return
 	}
