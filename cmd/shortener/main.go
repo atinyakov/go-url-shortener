@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -15,12 +16,20 @@ import (
 	_ "net/http/pprof"
 )
 
+var buildVersion string = "N/A"
+var buildDate string = "N/A"
+var buildCommit string = "N/A"
+
 func main() {
 	options := config.Parse()
 	hostname := options.Port
 	resultHostname := options.ResultHostname
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
+
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 
 	var s service.Storage
 
