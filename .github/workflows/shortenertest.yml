@@ -56,10 +56,17 @@ jobs:
         run: |
           go install golang.org/x/tools/cmd/goimports@latest
 
+      - name: Set build variables
+        run: |
+          echo "BUILD_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +%Y-%m-%dT%H:%M:%S)" >> $GITHUB_ENV
+          echo "BUILD_COMMIT=${GITHUB_SHA}" >> $GITHUB_ENV
+    
       - name: Build server binary
         run: |
           cd cmd/shortener
-          go build -buildvcs=false -o shortener
+          echo "Building with version: $BUILD_VERSION, date: $BUILD_DATE, commit: $BUILD_COMMIT"
+          GOOS=linux GOARCH=amd64 go build -buildvcs=false -ldflags "-X main.buildVersion=${{ env.BUILD_VERSION }} -X main.buildDate=${{ env.BUILD_DATE }} -X main.buildCommit=${{ env.BUILD_COMMIT }}" -o shortener
 
       - name: "Code increment #1"
         if: |
