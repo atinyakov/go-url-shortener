@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"go.uber.org/zap"
 
@@ -31,6 +32,7 @@ func main() {
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)
 
+	os.Exit(0)
 	var s service.Storage
 
 	log := logger.New()
