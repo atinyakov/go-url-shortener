@@ -39,7 +39,6 @@ Package main запускает статический анализатор ко
 - framepointer: отсутствие указателя кадра.
 - httpresponse: забытый `Body.Close()` у HTTP-ответов.
 - ifaceassert: неверные type assertion на интерфейсы.
-- loopclosure: замыкания в цикле на одну переменную.
 - lostcancel: потеря вызова `context.CancelFunc`.
 - nilfunc: вызов nil-функции.
 - printf: ошибки в форматировании строк.
@@ -118,7 +117,6 @@ import (
 	"golang.org/x/tools/go/analysis/passes/framepointer"
 	"golang.org/x/tools/go/analysis/passes/httpresponse"
 	"golang.org/x/tools/go/analysis/passes/ifaceassert"
-	"golang.org/x/tools/go/analysis/passes/loopclosure"
 	"golang.org/x/tools/go/analysis/passes/lostcancel"
 	"golang.org/x/tools/go/analysis/passes/nilfunc"
 	"golang.org/x/tools/go/analysis/passes/printf"
@@ -175,7 +173,6 @@ func main() {
 		httpresponse.Analyzer,
 		ifaceassert.Analyzer,
 		inspect.Analyzer,
-		loopclosure.Analyzer,
 		lostcancel.Analyzer,
 		nilfunc.Analyzer,
 		printf.Analyzer,
