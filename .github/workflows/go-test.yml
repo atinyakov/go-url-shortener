@@ -23,7 +23,7 @@ jobs:
         run: go mod tidy
 
       - name: Install custom linter
-        run: go build -o mylint ./cmd/staticlint/main.go
+        run: go build -o mylint ./cmd/staticlint
 
       - name: Run custom linter
         run: ./mylint ./...
