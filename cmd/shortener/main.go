@@ -16,9 +16,9 @@ import (
 	_ "net/http/pprof"
 )
 
-var buildVersion string = "N/A"
-var buildDate string = "N/A"
-var buildCommit string = "N/A"
+var buildVersion string
+var buildDate string
+var buildCommit string
 
 func main() {
 	options := config.Parse()
