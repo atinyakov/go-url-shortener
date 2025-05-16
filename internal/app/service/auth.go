@@ -12,6 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// AuthIface defines the interface for JWT authentication used in middleware.
+type AuthIface interface {
+	BuildJWTString() (string, string, error)
+	ParseClaims(c *http.Cookie) (*Claims, error)
+}
+
 // Claims represents the claims that are included in the JWT token.
 // It embeds the RegisteredClaims from the JWT package and includes
 // a custom UserID field.

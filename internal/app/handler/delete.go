@@ -28,6 +28,11 @@ func NewDelete(s service.URLServiceIface, l *zap.Logger) *DeleteHandler {
 	}
 }
 
+// callDeleteURLRecords is separated to allow override in tests.
+var СallDeleteURLRecords = func(service service.URLServiceIface, ctx context.Context, records []storage.URLRecord) {
+	go service.DeleteURLRecords(ctx, records)
+}
+
 // DeleteBatch handles DELETE requests for deleting multiple URLs in batch.
 // It reads a list of shortened URLs from the request body and deletes them asynchronously.
 // A 202 Accepted status is returned if the URLs are queued for deletion, or an error is returned if there are issues with the request.
@@ -37,8 +42,9 @@ func (h *DeleteHandler) DeleteBatch(res http.ResponseWriter, req *http.Request) 
 	defer cancel()
 
 	// Extract the user ID from the request context.
-	userID := req.Context().Value(middleware.UserIDKey).(string)
-	if userID == "" {
+	val := req.Context().Value(middleware.UserIDKey)
+	userID, ok := val.(string)
+	if !ok || userID == "" {
 		http.Error(res, "", http.StatusUnauthorized)
 		return
 	}
@@ -65,7 +71,7 @@ func (h *DeleteHandler) DeleteBatch(res http.ResponseWriter, req *http.Request) 
 	}
 
 	// Perform the deletion asynchronously.
-	go h.service.DeleteURLRecords(ctx, toDelete)
+	СallDeleteURLRecords(h.service, ctx, toDelete)
 
 	// Return a 202 Accepted status to acknowledge that the deletion process is started.
 	res.WriteHeader(http.StatusAccepted)
