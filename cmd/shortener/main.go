@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
@@ -26,6 +27,7 @@ func main() {
 	resultHostname := options.ResultHostname
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
+	useTLS := options.EnableHTTPS
 
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
@@ -83,9 +85,30 @@ func main() {
 	URLService := service.NewURL(s, resolver, zapLogger, resultHostname)
 	r := server.Init(resultHostname, zapLogger, true, URLService)
 
-	zapLogger.Info("Server is running", zap.String("hostname", hostname))
-	err = http.ListenAndServe(hostname, r)
-	if err != nil {
-		panic(err)
+	if useTLS {
+		manager := &autocert.Manager{
+			// директория для хранения сертификатов
+			Cache: autocert.DirCache("cache-dir"),
+			// функция, принимающая Terms of Service издателя сертификатов
+			Prompt: autocert.AcceptTOS,
+			// перечень доменов, для которых будут поддерживаться сертификаты
+			HostPolicy: autocert.HostWhitelist("mysite.ru", "www.mysite.ru"),
+		}
+		// конструируем сервер с поддержкой TLS
+		server := &http.Server{
+			Addr:    ":443",
+			Handler: r,
+			// для TLS-конфигурации используем менеджер сертификатов
+			TLSConfig: manager.TLSConfig(),
+		}
+		zapLogger.Info("Server is running with TLS", zap.String("hostname", hostname))
+		server.ListenAndServeTLS("", "")
+	} else {
+		zapLogger.Info("Server is running", zap.String("hostname", hostname))
+		err = http.ListenAndServe(hostname, r)
+
+		if err != nil {
+			panic(err)
+		}
 	}
 }

@@ -5,6 +5,7 @@ package config
 import (
 	"flag"
 	"os"
+	"strconv"
 )
 
 // Options holds the configuration values for the application.
@@ -23,6 +24,9 @@ type Options struct {
 
 	// EnablePprof indicates whether to enable pprof for performance profiling.
 	EnablePprof bool
+
+	// EnableHTTPS indicates whether to enable https.
+	EnableHTTPS bool
 }
 
 // options holds the current configuration values.
@@ -35,6 +39,7 @@ func init() {
 	flag.StringVar(&options.FilePath, "f", "", "path to storage file")
 	flag.StringVar(&options.DatabaseDSN, "d", "", "db address")
 	flag.BoolVar(&options.EnablePprof, "p", false, "enable pprof")
+	flag.BoolVar(&options.EnableHTTPS, "s", false, "enable https")
 }
 
 // Parse parses the command-line flags and environment variables to set
@@ -54,6 +59,15 @@ func Parse() *Options {
 
 	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
 		options.FilePath = storagePath
+	}
+
+	if enableHTTPS := os.Getenv("ENABLE_HTTPS"); enableHTTPS != "" {
+		httpMode, err := strconv.ParseBool(enableHTTPS)
+		if err != nil {
+			options.EnableHTTPS = false
+		}
+
+		options.EnableHTTPS = httpMode
 	}
 
 	return options
