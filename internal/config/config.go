@@ -3,7 +3,9 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"log"
 	"os"
 	"strconv"
 )
@@ -27,6 +29,9 @@ type Options struct {
 
 	// EnableHTTPS indicates whether to enable https.
 	EnableHTTPS bool
+
+	// Config is the path to the Config file.
+	Config string
 }
 
 // options holds the current configuration values.
@@ -40,6 +45,8 @@ func init() {
 	flag.StringVar(&options.DatabaseDSN, "d", "", "db address")
 	flag.BoolVar(&options.EnablePprof, "p", false, "enable pprof")
 	flag.BoolVar(&options.EnableHTTPS, "s", false, "enable https")
+	flag.StringVar(&options.Config, "config", "config.json", "path to config file")
+	flag.StringVar(&options.Config, "c", "config.json", "path to config file (shorthand)")
 }
 
 // Parse parses the command-line flags and environment variables to set
@@ -49,6 +56,20 @@ func Parse() *Options {
 	flag.Parse()
 
 	// Override flags with environment variables if set
+	if configPath := os.Getenv("CONFIG"); configPath != "" {
+		options.Config = configPath
+	}
+
+	if options.Config != "" {
+		data, err := os.ReadFile(options.Config)
+		if err != nil {
+			log.Fatalf("error while reading config file: %v", err)
+		}
+		if err := json.Unmarshal(data, options); err != nil {
+			log.Fatalf("error while parsing config file: %v", err)
+		}
+	}
+
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
 		options.Port = serverAddress
 	}

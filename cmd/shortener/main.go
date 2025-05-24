@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"net/http"
 
@@ -29,9 +30,9 @@ func main() {
 	dbName := options.DatabaseDSN
 	useTLS := options.EnableHTTPS
 
-	fmt.Printf("Build version: %s\n", buildVersion)
-	fmt.Printf("Build date: %s\n", buildDate)
-	fmt.Printf("Build commit: %s\n", buildCommit)
+	fmt.Printf("Build version: %s\n", cmp.Or(buildVersion, "N/A"))
+	fmt.Printf("Build date: %s\n", cmp.Or(buildDate, "N/A"))
+	fmt.Printf("Build commit: %s\n", cmp.Or(buildCommit, "N/A"))
 
 	var s service.Storage
 
