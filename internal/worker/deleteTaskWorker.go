@@ -85,7 +85,7 @@ func (s *DeleteTaskWorker) FlushRecords(ctx context.Context) {
 			}
 			s.logger.Info("Got record to delete", zap.Any("msg", msg))
 			messages = append(messages, msg)
-			if len(messages) >= 25 {
+			if len(messages) > 25 {
 				sendMessages()
 			}
 
