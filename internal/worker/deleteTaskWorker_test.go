@@ -43,15 +43,24 @@ func TestFlushRecords_BatchTrigger(t *testing.T) {
 	worker := worker.NewDeleteRecordWorker(logger, repo)
 	in := worker.GetInChannel()
 
-	go worker.FlushRecords(context.Background())
+	// Используем контекст с отменой для завершения FlushRecords
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// Send more than 25 records
+	done := make(chan struct{})
+	go func() {
+		worker.FlushRecords(ctx)
+		close(done)
+	}()
+
 	for i := 0; i < 26; i++ {
 		in <- storage.URLRecord{Short: "abc", UserID: "user"}
 	}
 
-	// Give some time for the batch to be processed
-	time.Sleep(100 * time.Millisecond)
+	close(in)
+
+	// Ждём завершения FlushRecords
+	<-done
 
 	require.Len(t, repo.Calls, 1)
 	require.Len(t, repo.Calls[0], 26)
