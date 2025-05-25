@@ -48,38 +48,48 @@ func (s *DeleteTaskWorker) GetInChannel() chan<- storage.URLRecord {
 // FlushRecords starts an infinite loop that receives records from the input
 // channel and flushes them to the storage in batches. Records are sent either
 // when the buffer reaches 25 items or every 10 seconds.
-func (s *DeleteTaskWorker) FlushRecords() {
+func (s *DeleteTaskWorker) FlushRecords(ctx context.Context) {
 	s.logger.Info("Flushing records init")
 	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
 	var messages []storage.URLRecord
 
 	// sendMessages flushes the current batch of records to the repository.
 	sendMessages := func() {
-		s.logger.Info("Flushing delete records", zap.Int("count", len(messages)))
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-
-		err := s.repo.DeleteBatch(ctx, messages)
-		if err != nil {
-			s.logger.Error("Cannot delete records", zap.Error(err))
-			messages = messages[:0] // clear buffer even on error
+		if len(messages) == 0 {
 			return
 		}
-		messages = messages[:0] // clear buffer after success
+		s.logger.Info("Flushing delete records", zap.Int("count", len(messages)))
+		batchCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		if err := s.repo.DeleteBatch(batchCtx, messages); err != nil {
+			s.logger.Error("Cannot delete records", zap.Error(err))
+		}
+		messages = messages[:0]
 	}
 
 	for {
 		select {
-		case msg := <-s.in:
+		case <-ctx.Done():
+			s.logger.Info("FlushRecords context cancelled, flushing final batch")
+			sendMessages()
+			return
+
+		case msg, ok := <-s.in:
+			if !ok {
+				s.logger.Info("Input channel closed, flushing final batch")
+				sendMessages()
+				return
+			}
 			s.logger.Info("Got record to delete", zap.Any("msg", msg))
 			messages = append(messages, msg)
-			if len(messages) > 25 {
+			if len(messages) >= 25 {
 				sendMessages()
 			}
+
 		case <-ticker.C:
-			if len(messages) == 0 {
-				continue
-			}
 			sendMessages()
 		}
 	}

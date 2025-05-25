@@ -22,7 +22,7 @@ func TestURLService_CreateURLRecord(t *testing.T) {
 	var mockResolver, _ = NewURLResolver(8, mockStorage)
 	mockLogger := zap.NewNop()
 
-	service := NewURL(mockStorage, mockResolver, mockLogger, "http://baseurl")
+	service, _ := NewURL(context.Background(), mockStorage, mockResolver, mockLogger, "http://baseurl")
 
 	result, err := service.CreateURLRecord(context.Background(), "http://example.com", "user-id")
 
@@ -47,7 +47,7 @@ func TestURLService_CreateURLRecords(t *testing.T) {
 	userID := "user-id"
 
 	// Service
-	service := NewURL(mockStorage, mockResolver, mockLogger, "http://baseurl")
+	service, _ := NewURL(context.Background(), mockStorage, mockResolver, mockLogger, "http://baseurl")
 
 	// Act
 	result, _ := service.CreateURLRecords(ctx, batchRequest, userID)
@@ -78,7 +78,7 @@ func TestURLService_GetURLByShort(t *testing.T) {
 		},
 	})
 
-	service := NewURL(mockStorage, mockResolver, mockLogger, "http://baseurl")
+	service, _ := NewURL(context.Background(), mockStorage, mockResolver, mockLogger, "http://baseurl")
 
 	result, err := service.GetURLByShort(context.Background(), "short-url")
 
@@ -104,7 +104,7 @@ func TestURLService_GetURLByUserID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	service := NewURL(mockStorage, mockResolver, mockLogger, "http://baseurl")
+	service, _ := NewURL(context.Background(), mockStorage, mockResolver, mockLogger, "http://baseurl")
 
 	result, err := service.GetURLByUserID(context.Background(), "user-id")
 
@@ -124,7 +124,7 @@ func TestURLService_PingContext(t *testing.T) {
 	mockResolver, _ := NewURLResolver(8, mockStorage)
 	mockLogger := zap.NewNop()
 
-	service := NewURL(mockStorage, mockResolver, mockLogger, "http://baseurl")
+	service, _ := NewURL(context.Background(), mockStorage, mockResolver, mockLogger, "http://baseurl")
 
 	err := service.PingContext(context.Background())
 

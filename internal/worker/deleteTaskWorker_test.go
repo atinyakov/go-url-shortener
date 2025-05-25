@@ -43,7 +43,7 @@ func TestFlushRecords_BatchTrigger(t *testing.T) {
 	worker := worker.NewDeleteRecordWorker(logger, repo)
 	in := worker.GetInChannel()
 
-	go worker.FlushRecords()
+	go worker.FlushRecords(context.Background())
 
 	// Send more than 25 records
 	for i := 0; i < 26; i++ {
@@ -64,7 +64,7 @@ func TestFlushRecords_TimerTrigger(t *testing.T) {
 	worker := worker.NewDeleteRecordWorker(logger, repo)
 	in := worker.GetInChannel()
 
-	go worker.FlushRecords()
+	go worker.FlushRecords(context.Background())
 
 	in <- storage.URLRecord{Short: "abc", UserID: "user"}
 	in <- storage.URLRecord{Short: "def", UserID: "user"}
@@ -82,7 +82,7 @@ func TestFlushRecords_ErrorClearsBuffer(t *testing.T) {
 	worker := worker.NewDeleteRecordWorker(logger, repo)
 	in := worker.GetInChannel()
 
-	go worker.FlushRecords()
+	go worker.FlushRecords(context.Background())
 
 	for i := 0; i < 30; i++ {
 		in <- storage.URLRecord{Short: "abc", UserID: "user"}

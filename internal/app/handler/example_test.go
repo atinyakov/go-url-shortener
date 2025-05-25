@@ -29,7 +29,7 @@ func setupMockService(t *testing.T) (*mocks.MockURLServiceIface, service.URLServ
 	mockStorage, _ := storage.CreateMemoryStorage()
 	resolver, _ := service.NewURLResolver(8, mockStorage)
 	zapLogger := logger.New().Log
-	urlService := service.NewURL(mockStorage, resolver, zapLogger, "http://localhost:8080")
+	urlService, _ := service.NewURL(context.Background(), mockStorage, resolver, zapLogger, "http://localhost:8080")
 	mockService := mocks.NewMockURLServiceIface(ctrl)
 	return mockService, urlService
 }
@@ -80,7 +80,7 @@ func setupMockGetService(t *testing.T) (*mocks.MockURLServiceIface, service.URLS
 	resolver, _ := service.NewURLResolver(8, mockStorage)
 	log := zap.NewNop()
 
-	urlService := service.NewURL(mockStorage, resolver, log, "http://localhost:8080")
+	urlService, _ := service.NewURL(context.Background(), mockStorage, resolver, log, "http://localhost:8080")
 	mockService := mocks.NewMockURLServiceIface(ctrl)
 
 	return mockService, urlService
