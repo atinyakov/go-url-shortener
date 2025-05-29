@@ -1,10 +1,16 @@
 package main
 
 import (
+	"cmp"
+	"context"
 	"fmt"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/atinyakov/go-url-shortener/internal/app/server"
 	"github.com/atinyakov/go-url-shortener/internal/app/service"
@@ -26,10 +32,11 @@ func main() {
 	resultHostname := options.ResultHostname
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
+	useTLS := options.EnableHTTPS
 
-	fmt.Printf("Build version: %s\n", buildVersion)
-	fmt.Printf("Build date: %s\n", buildDate)
-	fmt.Printf("Build commit: %s\n", buildCommit)
+	fmt.Printf("Build version: %s\n", cmp.Or(buildVersion, "N/A"))
+	fmt.Printf("Build date: %s\n", cmp.Or(buildDate, "N/A"))
+	fmt.Printf("Build commit: %s\n", cmp.Or(buildCommit, "N/A"))
 
 	var s service.Storage
 
@@ -61,14 +68,12 @@ func main() {
 		zapLogger.Info("Database connected and table ready.")
 	} else if filePath != "" {
 		zapLogger.Info("using file", zap.String("filePath", filePath))
-
 		s, err = storage.NewFileStorage(filePath, zapLogger)
 		if err != nil {
 			panic(err)
 		}
 	} else {
 		zapLogger.Info("using in memory storage")
-
 		s, err = storage.CreateMemoryStorage()
 		if err != nil {
 			panic(err)
@@ -80,12 +85,57 @@ func main() {
 		panic(err)
 	}
 
-	URLService := service.NewURL(s, resolver, zapLogger, resultHostname)
-	r := server.Init(resultHostname, zapLogger, true, URLService)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
 
-	zapLogger.Info("Server is running", zap.String("hostname", hostname))
-	err = http.ListenAndServe(hostname, r)
-	if err != nil {
-		panic(err)
+	URLService, shutdown := service.NewURL(ctx, s, resolver, zapLogger, resultHostname)
+	defer shutdown()
+
+	router := server.Init(resultHostname, zapLogger, true, URLService)
+
+	var srv *http.Server
+
+	if useTLS {
+		manager := &autocert.Manager{
+			Cache:      autocert.DirCache("cache-dir"),
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist("mysite.ru", "www.mysite.ru"),
+		}
+		srv = &http.Server{
+			Addr:      ":443",
+			Handler:   router,
+			TLSConfig: manager.TLSConfig(),
+		}
+		go func() {
+			zapLogger.Info("Server is running with TLS", zap.String("hostname", hostname))
+			if err := srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				zapLogger.Fatal("Server error", zap.Error(err))
+			}
+		}()
+	} else {
+		srv = &http.Server{
+			Addr:    hostname,
+			Handler: router,
+		}
+		go func() {
+			zapLogger.Info("Server is running", zap.String("hostname", hostname))
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				zapLogger.Fatal("Server error", zap.Error(err))
+			}
+		}()
+	}
+
+	// Ожидаем сигнал завершения
+	<-ctx.Done()
+	zapLogger.Info("Shutdown signal received")
+
+	// Завершаем сервер с таймаутом
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		zapLogger.Error("Server shutdown error", zap.Error(err))
+	} else {
+		zapLogger.Info("Server shutdown gracefully")
 	}
 }

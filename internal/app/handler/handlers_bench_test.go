@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -20,7 +21,7 @@ func BenchmarkPostPlainBody(b *testing.B) {
 	log := logger.New()
 	zapLogger := log.Log
 
-	var URLService = service.NewURL(mockStorage, resolver, zapLogger, "http://localhost:8080")
+	var URLService, _ = service.NewURL(context.Background(), mockStorage, resolver, zapLogger, "http://localhost:8080")
 	// Инициализация обработчика
 	postHandler := NewPost("http://localhost", URLService, zapLogger)
 
@@ -47,7 +48,7 @@ func BenchmarkPostJSON(b *testing.B) {
 	log := logger.New()
 	zapLogger := log.Log
 
-	var URLService = service.NewURL(mockStorage, resolver, zapLogger, "http://localhost:8080")
+	var URLService, _ = service.NewURL(context.Background(), mockStorage, resolver, zapLogger, "http://localhost:8080")
 
 	// Инициализация обработчика
 	postHandler := NewPost("http://localhost", URLService, zapLogger)

@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -32,13 +33,13 @@ type URLService struct {
 
 // NewURL creates a new instance of URLService with the given repository, resolver,
 // logger, and base URL. It initializes the worker for background deletion tasks.
-func NewURL(repo Storage, resolver *URLResolver, logger *zap.Logger, baseURL string) *URLService {
+func NewURL(ctx context.Context, repo Storage, resolver *URLResolver, logger *zap.Logger, baseURL string) (*URLService, func()) {
 	// Initialize the delete worker
 	worker := worker.NewDeleteRecordWorker(logger, repo)
 	in := worker.GetInChannel()
 
-	// Create the URLService and start the worker's background operation
-	service := URLService{
+	// Create the URLService
+	service := &URLService{
 		repository: repo,
 		resolver:   resolver,
 		baseURL:    baseURL,
@@ -46,10 +47,21 @@ func NewURL(repo Storage, resolver *URLResolver, logger *zap.Logger, baseURL str
 		logger:     logger,
 	}
 
-	// Start the worker to process URL deletions
-	go worker.FlushRecords()
+	// context for FlushRecords
+	workerCtx, cancel := context.WithCancel(ctx)
 
-	return &service
+	// Start the worker in the background
+	go worker.FlushRecords(workerCtx)
+
+	// shutdown function: closes channel and cancels context
+	shutdown := func() {
+		logger.Info("Shutting down background delete worker")
+		close(in)                   // closing input channel triggers graceful exit
+		cancel()                    // cancel context in case it's still waiting
+		time.Sleep(4 * time.Second) // optional: wait for final flush
+	}
+
+	return service, shutdown
 }
 
 // PingContext checks the health of the storage connection.
