@@ -32,6 +32,9 @@ type Options struct {
 
 	// Config is the path to the Config file.
 	Config string
+
+	// Trustet subnet to access /api/internal/stats, no access if not provided
+	TrustedSubnet string
 }
 
 // options holds the current configuration values.
@@ -47,6 +50,7 @@ func init() {
 	flag.BoolVar(&options.EnableHTTPS, "s", false, "enable https")
 	flag.StringVar(&options.Config, "config", "config.json", "path to config file")
 	flag.StringVar(&options.Config, "c", "config.json", "path to config file (shorthand)")
+	flag.StringVar(&options.Config, "t", "", "trustet subnet")
 }
 
 // Parse parses the command-line flags and environment variables to set
@@ -89,6 +93,10 @@ func Parse() *Options {
 		}
 
 		options.EnableHTTPS = httpMode
+	}
+
+	if trustedSubnet := os.Getenv("TRUSTED_SUBNET"); trustedSubnet != "" {
+		options.TrustedSubnet = trustedSubnet
 	}
 
 	return options

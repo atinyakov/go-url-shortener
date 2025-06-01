@@ -127,6 +127,12 @@ func (s *URLService) GetURLByShort(ctx context.Context, short string) (*storage.
 	return s.repository.FindByShort(ctx, short)
 }
 
+// GetStats retrives number of shortened items and number of users
+func (s *URLService) GetStats(ctx context.Context) (*models.StatsResponse, error) {
+	// Find and return the number of records and number of users
+	return s.repository.GetStats(ctx)
+}
+
 // GetURLByUserID retrieves all URL records associated with the specified user ID.
 func (s *URLService) GetURLByUserID(ctx context.Context, id string) (*[]models.ByIDRequest, error) {
 	var resultNew []models.ByIDRequest
