@@ -31,7 +31,7 @@ import (
 //
 // Returns:
 //   - A chi router instance configured with the defined routes and middlewares.
-func Init(baseURL string, logger *zap.Logger, withGzip bool, sv service.URLServiceIface) *chi.Mux {
+func Init(baseURL string, trustedSubnet string, logger *zap.Logger, withGzip bool, sv service.URLServiceIface) *chi.Mux {
 
 	// Create handler instances for different HTTP actions
 	get := handler.NewGet(sv, logger)
@@ -65,6 +65,12 @@ func Init(baseURL string, logger *zap.Logger, withGzip bool, sv service.URLServi
 	r.Route("/api/shorten", func(r chi.Router) {
 		r.Post("/", post.HandlePostJSON)   // Handles POST requests with JSON payload
 		r.Post("/batch", post.HandleBatch) // Handles batch URL shortening requests
+	})
+
+	// Route for requesting shortened statistics.
+	r.Route("/api/internal", func(r chi.Router) {
+		r.Use(middleware.WithSubnet(trustedSubnet))
+		r.Get("/stats", get.Stats)
 	})
 
 	// Default route if no shortened URL is provided

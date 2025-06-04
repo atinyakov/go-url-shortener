@@ -33,6 +33,7 @@ func main() {
 	filePath := options.FilePath
 	dbName := options.DatabaseDSN
 	useTLS := options.EnableHTTPS
+	trustedSubnet := options.TrustedSubnet
 
 	fmt.Printf("Build version: %s\n", cmp.Or(buildVersion, "N/A"))
 	fmt.Printf("Build date: %s\n", cmp.Or(buildDate, "N/A"))
@@ -91,7 +92,7 @@ func main() {
 	URLService, shutdown := service.NewURL(ctx, s, resolver, zapLogger, resultHostname)
 	defer shutdown()
 
-	router := server.Init(resultHostname, zapLogger, true, URLService)
+	router := server.Init(resultHostname, trustedSubnet, zapLogger, true, URLService)
 
 	var srv *http.Server
 

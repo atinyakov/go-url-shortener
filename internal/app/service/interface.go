@@ -35,6 +35,9 @@ type Storage interface {
 
 	// FindByID retrieves a URL record by its ID.
 	FindByID(context.Context, string) (storage.URLRecord, error)
+
+	// GetStats returns number of users and number of shortend URLs
+	GetStats(context.Context) (*models.StatsResponse, error)
 }
 
 // URLServiceIface is an interface that defines the URL service's core functionality.
@@ -57,4 +60,7 @@ type URLServiceIface interface {
 
 	// PingContext checks the health of the URL service.
 	PingContext(ctx context.Context) error
+
+	// GetStats retrieves stats for all URL records.
+	GetStats(ctx context.Context) (*models.StatsResponse, error)
 }

@@ -14,6 +14,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
+	"github.com/atinyakov/go-url-shortener/internal/models"
 	"github.com/atinyakov/go-url-shortener/internal/storage"
 )
 
@@ -295,4 +296,20 @@ func (r *URLRepository) FindByUserID(ctx context.Context, userID string) (*[]sto
 // PingContext checks the health of the database connection using the given context.
 func (r *URLRepository) PingContext(c context.Context) error {
 	return r.db.PingContext(c)
+}
+
+// GetStats gets shortener stats.
+func (r *URLRepository) GetStats(c context.Context) (*models.StatsResponse, error) {
+	var stats models.StatsResponse
+
+	query := `
+		SELECT 
+			COUNT(*) AS urls,
+			COUNT(DISTINCT user_id) AS users
+		FROM url_records
+		WHERE is_deleted = FALSE;
+	`
+
+	err := r.db.QueryRowContext(c, query).Scan(&stats.Urls, &stats.Users)
+	return &stats, err
 }

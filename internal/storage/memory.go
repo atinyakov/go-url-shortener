@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/atinyakov/go-url-shortener/internal/models"
 )
 
 // MemoryStorage provides an in-memory store for URL records.
@@ -110,4 +112,12 @@ func (m *MemoryStorage) FindByUserID(ctx context.Context, id string) (*[]URLReco
 // This method is not implemented and always returns an error.
 func (m *MemoryStorage) FindByID(ctx context.Context, id string) (URLRecord, error) {
 	return URLRecord{}, errors.New("not found")
+}
+
+// GetStats returns stats
+func (m *MemoryStorage) GetStats(ctx context.Context) (*models.StatsResponse, error) {
+	return &models.StatsResponse{
+		Users: len(m.idtol),
+		Urls:  len(m.stol),
+	}, nil
 }
