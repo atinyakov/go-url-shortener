@@ -32,8 +32,8 @@ jobs:
         run: |
           go test -v $(go list ./... | grep -v "/mocks|/cmd") -coverprofile=coverage.out
 
-      - name: Filter coverage report to exclude mocks folder
-        run: grep -v "mocks/" coverage.out > coverage_filtered.out
+      - name: Filter coverage report to exclude mocks and proto-generated files
+        run: grep -v -E "(mocks/|.pb.go)" coverage.out > coverage_filtered.out
 
       - name: Display coverage report
         run: go tool cover -func=coverage_filtered.out
