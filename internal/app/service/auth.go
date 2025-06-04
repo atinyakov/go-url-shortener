@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 type AuthIface interface {
 	BuildJWTString() (string, string, error)
 	ParseClaims(c *http.Cookie) (*Claims, error)
+	ParseRawJWT(tokenString string) (*Claims, error)
 }
 
 // Claims represents the claims that are included in the JWT token.
@@ -98,5 +100,21 @@ func (a Auth) ParseClaims(c *http.Cookie) (*Claims, error) {
 	}
 
 	// Return the parsed claims
+	return claims, nil
+}
+
+func (a *Auth) ParseRawJWT(tokenString string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token or claims")
+	}
+
 	return claims, nil
 }
