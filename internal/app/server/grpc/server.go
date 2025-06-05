@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/atinyakov/go-url-shortener/proto"
 
@@ -36,13 +37,15 @@ func New(baseURL string, trustedSubnet string, logger *zap.Logger, svc *service.
 		grpc.ChainUnaryInterceptor(
 			logging.UnaryServerInterceptor(intercepters.InterceptorLogger(logger)),
 			intercepters.WithJWT(service.NewAuth(svc)),
+			intercepters.SubnetIPInterceptor,
 		),
 	)
 
 	// Register the gRPC service implementation
-	pb.RegisterURLServiceServer(s, &shortenerServer{
-		service: svc,
-		baseURL: baseURL,
+	pb.RegisterURLServiceServer(s, &ShortenerServer{
+		Service:       svc,
+		BaseURL:       baseURL,
+		TrustedSubnet: trustedSubnet,
 	})
 
 	return &Server{
@@ -72,30 +75,31 @@ func (s *Server) GracefulStop() {
 
 // --- Implementation of the gRPC interface ---
 
-type shortenerServer struct {
+type ShortenerServer struct {
 	pb.UnimplementedURLServiceServer
-	service *service.URLService
-	baseURL string
+	Service       service.URLServiceIface
+	BaseURL       string
+	TrustedSubnet string
 }
 
 // CreateURLRecord
-func (s *shortenerServer) CreateURLRecord(ctx context.Context, req *pb.CreateURLRecordRequest) (*pb.CreateURLRecordResponse, error) {
+func (s *ShortenerServer) CreateURLRecord(ctx context.Context, req *pb.CreateURLRecordRequest) (*pb.CreateURLRecordResponse, error) {
 	userID, ok := ctx.Value(middleware.UserIDKey).(string)
 	if !ok {
 		return nil, status.Error(codes.Internal, "user ID missing in context")
 	}
 
-	record, err := s.service.CreateURLRecord(ctx, req.Url, userID)
+	record, err := s.Service.CreateURLRecord(ctx, req.Url, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.CreateURLRecordResponse{
-		Result: s.baseURL + "/" + record.Short,
+		Result: s.BaseURL + "/" + record.Short,
 	}, nil
 }
 
-func (s *shortenerServer) CreateURLRecords(ctx context.Context, req *pb.CreateURLRecordBatchRequest) (*pb.CreateURLRecordBatchResponse, error) {
+func (s *ShortenerServer) CreateURLRecords(ctx context.Context, req *pb.CreateURLRecordBatchRequest) (*pb.CreateURLRecordBatchResponse, error) {
 	userID, ok := ctx.Value(middleware.UserIDKey).(string)
 	if !ok {
 		return nil, status.Error(codes.Internal, "user ID missing in context")
@@ -110,7 +114,7 @@ func (s *shortenerServer) CreateURLRecords(ctx context.Context, req *pb.CreateUR
 		})
 	}
 
-	batchUrls, err := s.service.CreateURLRecords(ctx, urlsR, userID)
+	batchUrls, err := s.Service.CreateURLRecords(ctx, urlsR, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			return nil, status.Error(codes.AlreadyExists, "URL conflict")
@@ -138,7 +142,7 @@ var СallDeleteURLRecords = func(service service.URLServiceIface, ctx context.Co
 
 // DeleteBatch handles DELETE requests for deleting multiple URLs in batch.
 // It reads a list of shortened URLs from the request body and deletes them asynchronously.
-func (s *shortenerServer) DeleteBatch(ctx context.Context, req *pb.DeleteURLRecordsRequest) error {
+func (s *ShortenerServer) DeleteBatch(ctx context.Context, req *pb.DeleteURLRecordsRequest) error {
 	userID, ok := ctx.Value(middleware.UserIDKey).(string)
 	if !ok {
 		return status.Error(codes.Internal, "user ID missing in context")
@@ -151,14 +155,14 @@ func (s *shortenerServer) DeleteBatch(ctx context.Context, req *pb.DeleteURLReco
 	}
 
 	// Perform the deletion asynchronously.
-	СallDeleteURLRecords(s.service, ctx, toDelete)
+	СallDeleteURLRecords(s.Service, ctx, toDelete)
 
 	return nil
 }
 
-func (s *shortenerServer) GetURLByShort(ctx context.Context, req *pb.Short) (*pb.URLRecord, error) {
+func (s *ShortenerServer) GetURLByShort(ctx context.Context, req *pb.Short) (*pb.URLRecord, error) {
 	// Resolve the original URL using the service.
-	r, err := s.service.GetURLByShort(ctx, req.Short)
+	r, err := s.Service.GetURLByShort(ctx, req.Short)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -174,14 +178,14 @@ func (s *shortenerServer) GetURLByShort(ctx context.Context, req *pb.Short) (*pb
 	}, nil
 }
 
-func (s *shortenerServer) GetURLByUserID(ctx context.Context, req *pb.ID) (*pb.ByUserIDResponse, error) {
+func (s *ShortenerServer) GetURLByUserID(ctx context.Context, req *pb.ID) (*pb.ByUserIDResponse, error) {
 	userID, ok := ctx.Value(middleware.UserIDKey).(string)
 	if !ok {
 		return nil, status.Error(codes.Internal, "user ID missing in context")
 	}
 
 	// Retrieve the URLs associated with the user from the service.
-	urls, err := s.service.GetURLByUserID(ctx, userID)
+	urls, err := s.Service.GetURLByUserID(ctx, userID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -196,5 +200,27 @@ func (s *shortenerServer) GetURLByUserID(ctx context.Context, req *pb.ID) (*pb.B
 
 	return &pb.ByUserIDResponse{
 		Items: respItems,
+	}, nil
+}
+
+func (s *ShortenerServer) PingContext(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, s.Service.PingContext(ctx)
+}
+
+func (s *ShortenerServer) GetStats(ctx context.Context, req *emptypb.Empty) (*pb.StatsResponse, error) {
+	subnet, ok := ctx.Value(intercepters.RealIPKey).(string)
+	if !ok || subnet == "" {
+		return nil, status.Error(codes.PermissionDenied, "X-Real-IP header missing")
+	}
+
+	if subnet != s.TrustedSubnet {
+		return nil, status.Error(codes.PermissionDenied, "subnet is not trusted")
+	}
+
+	stats, _ := s.Service.GetStats(ctx)
+
+	return &pb.StatsResponse{
+		Urls:  int32(stats.Urls),
+		Users: int32(stats.Users),
 	}, nil
 }

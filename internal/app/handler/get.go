@@ -126,6 +126,18 @@ func (h *GetHandler) Stats(res http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 	defer cancel()
 
-	_, _ = h.service.GetStats(ctx)
+	stats, _ := h.service.GetStats(ctx)
 
+	// Marshal the list of URLs to JSON and send the response.
+	response, err := json.Marshal(*stats)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+
+	_, writeErr := res.Write(response)
+	if writeErr != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
 }
