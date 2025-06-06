@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"github.com/atinyakov/go-url-shortener/internal/storage"
@@ -181,5 +183,54 @@ func TestDeleteBatch(t *testing.T) {
 
 	err := repo.DeleteBatch(context.Background(), records)
 	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPingContext(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Expect the PingContext call
+	mock.ExpectPing()
+
+	err := repo.PingContext(ctx)
+	require.NoError(t, err, "PingContext should return no error for healthy DB")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetStats_Empty(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) AS urls, COUNT\(DISTINCT user_id\) AS users FROM url_records WHERE is_deleted = FALSE;`).
+		WillReturnRows(sqlmock.NewRows([]string{"urls", "users"}).
+			AddRow(0, 0))
+
+	stats, err := repo.GetStats(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, stats)
+	require.Equal(t, int(0), stats.Urls)
+	require.Equal(t, int(0), stats.Users)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetStats_WithData(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) AS urls, COUNT\(DISTINCT user_id\) AS users FROM url_records WHERE is_deleted = FALSE;`).
+		WillReturnRows(sqlmock.NewRows([]string{"urls", "users"}).
+			AddRow(5, 3)) // example: 5 URLs, 3 users
+
+	stats, err := repo.GetStats(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, stats)
+	require.Equal(t, int(5), stats.Urls)
+	require.Equal(t, int(3), stats.Users)
+
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
