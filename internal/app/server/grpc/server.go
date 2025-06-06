@@ -160,6 +160,7 @@ func (s *ShortenerServer) DeleteBatch(ctx context.Context, req *pb.DeleteURLReco
 	return nil
 }
 
+// GetURLByShort
 func (s *ShortenerServer) GetURLByShort(ctx context.Context, req *pb.Short) (*pb.URLRecord, error) {
 	// Resolve the original URL using the service.
 	r, err := s.Service.GetURLByShort(ctx, req.Short)
@@ -178,6 +179,7 @@ func (s *ShortenerServer) GetURLByShort(ctx context.Context, req *pb.Short) (*pb
 	}, nil
 }
 
+// GetURLByUserID
 func (s *ShortenerServer) GetURLByUserID(ctx context.Context, req *pb.ID) (*pb.ByUserIDResponse, error) {
 	userID, ok := ctx.Value(middleware.UserIDKey).(string)
 	if !ok {
@@ -203,10 +205,12 @@ func (s *ShortenerServer) GetURLByUserID(ctx context.Context, req *pb.ID) (*pb.B
 	}, nil
 }
 
+// PingContext
 func (s *ShortenerServer) PingContext(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, s.Service.PingContext(ctx)
 }
 
+// GetStats
 func (s *ShortenerServer) GetStats(ctx context.Context, req *emptypb.Empty) (*pb.StatsResponse, error) {
 	subnet, ok := ctx.Value(intercepters.RealIPKey).(string)
 	if !ok || subnet == "" {
