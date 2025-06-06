@@ -3,10 +3,15 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"github.com/atinyakov/go-url-shortener/internal/storage"
@@ -182,4 +187,124 @@ func TestDeleteBatch(t *testing.T) {
 	err := repo.DeleteBatch(context.Background(), records)
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPingContext(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Expect the PingContext call
+	mock.ExpectPing()
+
+	err := repo.PingContext(ctx)
+	require.NoError(t, err, "PingContext should return no error for healthy DB")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetStats_Empty(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) AS urls, COUNT\(DISTINCT user_id\) AS users FROM url_records WHERE is_deleted = FALSE;`).
+		WillReturnRows(sqlmock.NewRows([]string{"urls", "users"}).
+			AddRow(0, 0))
+
+	stats, err := repo.GetStats(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, stats)
+	require.Equal(t, int(0), stats.Urls)
+	require.Equal(t, int(0), stats.Users)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetStats_WithData(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) AS urls, COUNT\(DISTINCT user_id\) AS users FROM url_records WHERE is_deleted = FALSE;`).
+		WillReturnRows(sqlmock.NewRows([]string{"urls", "users"}).
+			AddRow(5, 3)) // example: 5 URLs, 3 users
+
+	stats, err := repo.GetStats(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, stats)
+	require.Equal(t, int(5), stats.Urls)
+	require.Equal(t, int(3), stats.Users)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestWriteAll_Success(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+
+	records := []storage.URLRecord{
+		{Original: "http://example.com/1", Short: "a1", ID: "id1", UserID: "user1"},
+		{Original: "http://example.com/2", Short: "a2", ID: "id2", UserID: "user2"},
+	}
+
+	mock.ExpectBegin()
+
+	mock.ExpectPrepare(regexp.QuoteMeta(`
+		INSERT INTO url_records(original_url, short_url, id, user_id) 
+		VALUES ($1, $2, $3, $4) 
+		ON CONFLICT (original_url) DO NOTHING 
+		RETURNING original_url, short_url, id, user_id;
+	`))
+
+	for _, r := range records {
+		mock.ExpectExec(regexp.QuoteMeta(`
+			INSERT INTO url_records(original_url, short_url, id, user_id) 
+			VALUES ($1, $2, $3, $4) 
+			ON CONFLICT (original_url) DO NOTHING 
+			RETURNING original_url, short_url, id, user_id;
+		`)).
+			WithArgs(r.Original, r.Short, r.ID, r.UserID).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+
+	mock.ExpectCommit()
+
+	err := repo.WriteAll(ctx, records)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestWriteAll_Conflict(t *testing.T) {
+	db, mock, repo := setupMockDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+
+	records := []storage.URLRecord{
+		{Original: "http://example.com/1", Short: "a1", ID: "id1", UserID: "user1"},
+	}
+
+	mock.ExpectBegin()
+
+	mock.ExpectPrepare(regexp.QuoteMeta(`
+		INSERT INTO url_records(original_url, short_url, id, user_id) 
+		VALUES ($1, $2, $3, $4) 
+		ON CONFLICT (original_url) DO NOTHING 
+		RETURNING original_url, short_url, id, user_id;
+	`))
+
+	mock.ExpectExec(regexp.QuoteMeta(`
+		INSERT INTO url_records(original_url, short_url, id, user_id) 
+		VALUES ($1, $2, $3, $4) 
+		ON CONFLICT (original_url) DO NOTHING 
+		RETURNING original_url, short_url, id, user_id;
+	`)).
+		WithArgs(records[0].Original, records[0].Short, records[0].ID, records[0].UserID).
+		WillReturnError(&pgconn.PgError{Code: pgerrcode.UniqueViolation})
+
+	err := repo.WriteAll(ctx, records)
+	require.ErrorIs(t, err, ErrConflict)
+	require.NoError(t, mock.ExpectationsWereMet())
 }

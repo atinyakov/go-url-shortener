@@ -71,6 +71,26 @@ func TestMemoryStorage_FindByUserID(t *testing.T) {
 	assert.Nil(t, records)
 }
 
+func TestMemoryStorage_GetStats(t *testing.T) {
+	mem, _ := storage.CreateMemoryStorage()
+
+	mem.Write(context.Background(), storage.URLRecord{Short: "s1", Original: "https://a.com", UserID: "userX"})
+	mem.Write(context.Background(), storage.URLRecord{Short: "s2", Original: "https://b.com", UserID: "userX"})
+
+	record, err := mem.GetStats(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, record.Users, 1)
+	assert.Equal(t, record.Urls, 2)
+}
+
+func TestMemoryStorage_Read(t *testing.T) {
+	mem, _ := storage.CreateMemoryStorage()
+
+	records, err := mem.Read(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, records, 0)
+}
+
 func TestMemoryStorage_DeleteBatch(t *testing.T) {
 	mem, _ := storage.CreateMemoryStorage()
 

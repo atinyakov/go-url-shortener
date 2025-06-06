@@ -13,10 +13,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"
-
 	models "github.com/atinyakov/go-url-shortener/internal/models"
 	storage "github.com/atinyakov/go-url-shortener/internal/storage"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockStorage is a mock of Storage interface.
@@ -100,6 +99,21 @@ func (m *MockStorage) FindByUserID(arg0 context.Context, arg1 string) (*[]storag
 func (mr *MockStorageMockRecorder) FindByUserID(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserID", reflect.TypeOf((*MockStorage)(nil).FindByUserID), arg0, arg1)
+}
+
+// GetStats mocks base method.
+func (m *MockStorage) GetStats(arg0 context.Context) (*models.StatsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats", arg0)
+	ret0, _ := ret[0].(*models.StatsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockStorageMockRecorder) GetStats(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockStorage)(nil).GetStats), arg0)
 }
 
 // PingContext mocks base method.
@@ -224,6 +238,21 @@ func (m *MockURLServiceIface) DeleteURLRecords(ctx context.Context, rs []storage
 func (mr *MockURLServiceIfaceMockRecorder) DeleteURLRecords(ctx, rs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteURLRecords", reflect.TypeOf((*MockURLServiceIface)(nil).DeleteURLRecords), ctx, rs)
+}
+
+// GetStats mocks base method.
+func (m *MockURLServiceIface) GetStats(ctx context.Context) (*models.StatsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats", ctx)
+	ret0, _ := ret[0].(*models.StatsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockURLServiceIfaceMockRecorder) GetStats(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockURLServiceIface)(nil).GetStats), ctx)
 }
 
 // GetURLByShort mocks base method.

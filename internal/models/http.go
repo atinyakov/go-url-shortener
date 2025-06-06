@@ -44,3 +44,12 @@ type ByIDRequest struct {
 	// ShortURL is the shortened version of the original URL.
 	ShortURL string `json:"short_url"`
 }
+
+// StatsResponse represents responce for Stats handler
+type StatsResponse struct {
+	// Total number of shortened URLS
+	Urls int `json:"urls"`
+
+	// Total number of users
+	Users int `json:"users"`
+}

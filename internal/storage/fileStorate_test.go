@@ -221,3 +221,29 @@ func TestPingContext(t *testing.T) {
 	err = fs.PingContext(context.Background())
 	assert.Error(t, err)
 }
+
+func TestFileStorage_GetStats(t *testing.T) {
+	logger, _ := zap.NewProduction()
+	testFile := filepath.Join(os.TempDir(), "test_ping.json")
+
+	fs, err := NewFileStorage(testFile, logger)
+
+	assert.NoError(t, err)
+	defer fs.Close()
+
+	records := []URLRecord{
+		{ID: "1", Short: "s1", Original: "https://a.com", UserID: "user1"},
+		{ID: "2", Short: "s2", Original: "https://b.com", UserID: "user2"},
+		{ID: "3", Short: "s3", Original: "https://c.com", UserID: "user1"},
+		{ID: "4", Short: "s4", Original: "https://d.com", UserID: ""},
+	}
+
+	err = fs.WriteAll(context.Background(), records)
+	assert.NoError(t, err)
+
+	stats, err := fs.GetStats(context.Background())
+	assert.NoError(t, err)
+
+	assert.Equal(t, 4, stats.Urls)  // total URLs
+	assert.Equal(t, 2, stats.Users) // user1 and user2 only
+}

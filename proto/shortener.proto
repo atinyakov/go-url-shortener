@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package shortener;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/atinyakov/go-url-shortener/proto;proto";
+
+message CreateURLRecordRequest {
+    string url = 1;
+}
+
+message CreateURLRecordResponse {
+	string result = 1;   
+}
+
+message CreateURLRecordBatchRequestItem {
+    // CorrelationID is a unique identifier for this request, useful for matching
+	// the response with the original request.
+	string correlation_id = 1;
+
+	// OriginalURL is the URL to be shortened.
+	string original_url = 2;
+}
+
+message CreateURLRecordBatchResponceItem {
+ 	// CorrelationID matches the one sent in the corresponding BatchRequest.
+	string correlation_id = 1;
+
+	// ShortURL is the shortened version of the OriginalURL.
+	string short_url = 2;
+}
+
+message CreateURLRecordBatchRequest {
+    repeated CreateURLRecordBatchRequestItem items = 1;
+
+    string user_id = 2;
+}
+
+message CreateURLRecordBatchResponse {
+    repeated CreateURLRecordBatchResponceItem items = 1;
+}
+
+message URLRecord {
+	string id    	 = 1;         // The unique identifier for the URL record
+	string original  = 2;    // The original URL before shortening
+	string short     = 3;   // The shortened URL
+	string user_id    = 4;     // The ID of the user who created the shortened URL
+	bool is_deleted   = 5;   // A flag indicating if the URL record is deleted
+}
+
+message Short {
+	string short = 1;
+}
+
+message DeleteURLRecordsRequest {
+	repeated Short items = 1;
+}
+
+message ID {
+	string id = 1;
+}
+
+message ByUserID {
+	// OriginalURL is the original long-form URL.
+	string original_url = 1;
+
+	// ShortURL is the shortened version of the original URL.
+	string short_url = 2;
+}
+
+message ByUserIDResponse {
+	repeated ByUserID items = 1;
+}
+
+// StatsResponse represents responce for Stats handler
+message StatsResponse {
+	// Total number of shortened URLS
+	int32 urls = 1;
+
+	// Total number of users
+	int32 users = 2;
+}
+
+
+service URLService {
+	// CreateURLRecords creates multiple URL records in batch, based on a list of requests and user ID.
+    rpc CreateURLRecord (CreateURLRecordRequest) returns (CreateURLRecordResponse); 
+
+	// CreateURLRecords creates multiple URL records in batch, based on a list of requests and user ID.
+	rpc CreateURLRecords(CreateURLRecordBatchRequest) returns (CreateURLRecordBatchResponse);
+
+	// DeleteURLRecords deletes multiple URL records in batch.
+	rpc DeleteURLRecords(DeleteURLRecordsRequest) returns (google.protobuf.Empty);
+
+	// GetURLByShort retrieves a URL record by its shortened URL.
+	rpc GetURLByShort(Short) returns (URLRecord);
+
+	// GetURLByUserID retrieves all URL records associated with a given user ID.
+	rpc GetURLByUserID(ID) returns (ByUserIDResponse);
+
+	// PingContext checks the health of the URL service.
+	rpc PingContext(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+	// GetStats retrieves stats for all URL records.
+	rpc GetStats(google.protobuf.Empty) returns (StatsResponse);
+}

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/atinyakov/go-url-shortener/internal/models"
 	"go.uber.org/zap"
 )
 
@@ -192,4 +193,24 @@ func (fs *FileStorage) Close() error {
 // in the file-based storage implementation.
 func (fs *FileStorage) PingContext(c context.Context) error {
 	return errors.ErrUnsupported
+}
+
+// GetStats returns stats
+func (fs *FileStorage) GetStats(c context.Context) (*models.StatsResponse, error) {
+	records, err := fs.Read(c)
+	if err != nil {
+		return nil, err
+	}
+
+	userSet := make(map[string]struct{})
+	for _, r := range records {
+		if r.UserID != "" {
+			userSet[r.UserID] = struct{}{}
+		}
+	}
+
+	return &models.StatsResponse{
+		Urls:  len(records),
+		Users: len(userSet),
+	}, nil
 }

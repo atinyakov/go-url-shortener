@@ -131,3 +131,32 @@ func TestURLService_PingContext(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
 }
+
+func TestURLService_GetStats(t *testing.T) {
+	mockStorage, _ := storage.CreateMemoryStorage()
+	mockResolver, _ := NewURLResolver(8, mockStorage)
+	mockLogger := zap.NewNop()
+
+	_ = mockStorage.WriteAll(context.Background(), []storage.URLRecord{
+		{
+			Original: "http://example.com",
+			Short:    "short-url",
+			UserID:   "user-id",
+		},
+		{
+			Original: "http://example1.com",
+			Short:    "short-url1",
+			UserID:   "user-id",
+		},
+	})
+
+	service, _ := NewURL(context.Background(), mockStorage, mockResolver, mockLogger, "http://baseurl")
+
+	result, err := service.GetStats(context.Background())
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, result.Urls)
+	assert.Equal(t, 1, result.Users)
+}

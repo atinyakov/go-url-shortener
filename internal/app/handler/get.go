@@ -113,3 +113,31 @@ func (h *GetHandler) URLsByUserID(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 }
+
+// Stats gets all statistics
+func (h *GetHandler) Stats(res http.ResponseWriter, req *http.Request) {
+	// extract subnet from header
+	subnet := req.Header.Get("X-Real-IP")
+	if subnet == "" {
+		res.WriteHeader(http.StatusForbidden)
+	}
+
+	// Create a context with timeout.
+	ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+	defer cancel()
+
+	stats, _ := h.service.GetStats(ctx)
+
+	// Marshal the list of URLs to JSON and send the response.
+	response, err := json.Marshal(*stats)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+
+	_, writeErr := res.Write(response)
+	if writeErr != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+}

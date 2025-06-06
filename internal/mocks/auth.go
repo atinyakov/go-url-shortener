@@ -71,3 +71,18 @@ func (mr *MockAuthIfaceMockRecorder) ParseClaims(c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseClaims", reflect.TypeOf((*MockAuthIface)(nil).ParseClaims), c)
 }
+
+// ParseRawJWT mocks base method.
+func (m *MockAuthIface) ParseRawJWT(tokenString string) (*service.Claims, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ParseRawJWT", tokenString)
+	ret0, _ := ret[0].(*service.Claims)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ParseRawJWT indicates an expected call of ParseRawJWT.
+func (mr *MockAuthIfaceMockRecorder) ParseRawJWT(tokenString any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseRawJWT", reflect.TypeOf((*MockAuthIface)(nil).ParseRawJWT), tokenString)
+}
