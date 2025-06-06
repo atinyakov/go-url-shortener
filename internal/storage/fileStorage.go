@@ -202,7 +202,15 @@ func (fs *FileStorage) GetStats(c context.Context) (*models.StatsResponse, error
 		return nil, err
 	}
 
+	userSet := make(map[string]struct{})
+	for _, r := range records {
+		if r.UserID != "" {
+			userSet[r.UserID] = struct{}{}
+		}
+	}
+
 	return &models.StatsResponse{
-		Urls: len(records),
+		Urls:  len(records),
+		Users: len(userSet),
 	}, nil
 }
