@@ -50,7 +50,7 @@ func init() {
 	flag.BoolVar(&options.EnableHTTPS, "s", false, "enable https")
 	flag.StringVar(&options.Config, "config", "config.json", "path to config file")
 	flag.StringVar(&options.Config, "c", "config.json", "path to config file (shorthand)")
-	flag.StringVar(&options.Config, "t", "", "trustet subnet")
+	flag.StringVar(&options.TrustedSubnet, "t", "", "trustet subnet")
 }
 
 // Parse parses the command-line flags and environment variables to set
@@ -65,12 +65,14 @@ func Parse() *Options {
 	}
 
 	if options.Config != "" {
-		data, err := os.ReadFile(options.Config)
-		if err != nil {
-			log.Fatalf("error while reading config file: %v", err)
-		}
-		if err := json.Unmarshal(data, options); err != nil {
-			log.Fatalf("error while parsing config file: %v", err)
+		if _, err := os.Stat(options.Config); err == nil {
+			data, err := os.ReadFile(options.Config)
+			if err != nil {
+				log.Fatalf("error while reading config file: %v", err)
+			}
+			if err := json.Unmarshal(data, options); err != nil {
+				log.Fatalf("error while parsing config file: %v", err)
+			}
 		}
 	}
 
